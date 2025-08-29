@@ -1,0 +1,23 @@
+# Delta Sharing Databricks-to-Databricks protocol
+
+To enable Databricks-to-Databricks Delta Sharing, you will need to provide Nexalis with your recipient sharing identifier. This identifier is unique to your Databricks workspace and has the following format (&lt;cloud&gt;:&lt;region&gt;:&lt;recipient-UUID&gt;):
+
+aws:us-east-1:xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
+You can find this identifier in your Databricks workspace by following these steps:
+
+In your Databricks workspace, click    Catalog.
+
+At the top of the Catalog pane, click the   gear icon and select Delta Sharing.
+
+Alternatively, from the Quick access page, click the Delta Sharing > button.
+
+On the “Shared with me” tab, click your Databricks sharing organization name in the upper right, and select Copy sharing identifier.
+
+Once obtained, please send this identifier to your Nexalis account manager or support contact so that Nexalis can configure sharing for your environment.
+
+Note: To avoid egress costs, we recommend using the same region as the Nexalis Databricks environment.
+
+After Nexalis completes the setup, you will see the shared tables (gold_&lt;user_name&gt;_avg_std and gold_&lt;user_name&gt;_hf_std) directly inside your Databricks workspace. From it, you can use anything offered by Databricks to build your data and AI workloads.
+
+For reference:

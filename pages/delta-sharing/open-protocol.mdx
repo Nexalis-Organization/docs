@@ -1,0 +1,152 @@
+# Delta Sharing open sharing protocol.
+
+Delta Sharing is an open standard for secure data sharing. Nexalis uses Delta Sharing to provide users with seamless access to shared datasets across different environments. This allows you to query data directly in Python, JAVA or Spark without needing complex integration steps, enabling seamless data sharing across organizations.
+
+For reference:
+
+## Credential File
+
+When Nexalis shares a dataset with you, you will receive an email with a one-time download link. Clicking this link will take you to a Databricks portal where you can download a credential file. This credential file is essential for connecting data to various applications. Safely store this credential, as there won’t be an option to redownload it later. The link should direct you to:
+
+Click on the blue box and the file named “config.share” should automatically start downloading. 
+
+The file should contain:
+
+This credential file is essential for authentication and contains:
+
+- **shareCredentialsVersion**: protocol version used.
+- **bearerToken**: token that grants you access.
+- **endpoint**: the Delta Sharing endpoint URL.
+- **expirationTime**: when the credential becomes invalid.
+
+Save this file securely (e.g., store in a secure path, not under version control). Nexalis will provide it for you, and it cannot be re-downloaded later. You will reference this file whenever you connect to Delta Sharing from your applications. Once expired, you’ll need to request a new file from Nexalis; there is no way to refresh it yourself.
+
+## Consuming the data
+
+In this method, Nexalis provides data through the open Delta Sharing protocol, which is not limited to Python. You can access the same shared datasets from multiple programming languages and tools, such as R, Scala, Java, and BI platforms. The tutorial below focuses on Python and Spark because they are the most common for data analysis and pipelines, but you are free to use other environments. For additional examples, please refer to the official Delta Sharing documentation and tutorials:
+
+- [Delta Sharing open protocol overview](https://databricks.com/delta-sharing)
+- [Databricks Delta Sharing docs](https://docs.databricks.com/delta-sharing/)
+- [Delta Sharing GitHub examples](https://github.com/delta-io/delta-sharing)
+
+## Python Example
+
+### Delta Sharing with Python and Spark — How to Run Locally
+
+Nexalis provides you with a secure credential file (`config.share`) and the fully qualified table names you are allowed to access.
+
+You can read these shared tables on your machine in two ways:
+
+- **Method A — Embedded Python**: run from a normal Python process and create a SparkSession in-process. Best for ad-hoc exploration and small pulls.
+- **Method B — spark-submit**: run a standalone local Spark job with explicit packages and classpath. Best for larger data, repeatable jobs, and especially for real-time/“only new data” streaming using Spark Structured Streaming.
+
+### What Nexalis Provides
+
+Nexalis will share with you:
+
+- The credential profile file: `config.share` (keep it safe and do not alter it).
+- One or more Delta Sharing table names in the format:
+
+```text
+./config.share#&lt;user_name&gt;.&lt;client_name&gt;.&lt;table&gt;
+```
+
+Replace `&lt;user_name&gt;` with your assigned Nexalis username.  
+Replace `&lt;client_name&gt;` with your organization’s client name.  
+Replace `&lt;table&gt;` with the shared table name.
+
+### Prerequisites
+
+- A supported Java runtime (JDK 8/11/17). Make sure `JAVA_HOME` points to it.
+- For Method A: Python 3.8+ and pip.
+- For Method B: Local Spark 3.4.2 (see installation steps below).
+
+---
+
+## Method A — Embedded Python (Spark created in-process)
+
+**When to use**: quick exploration, notebooks, small to medium pulls, minimal setup.
+
+**How it works**: install Python libraries, keep `config.share` next to your script, start a SparkSession inside Python, and query the shared table.
+
+### Steps
+
+1. Install the required libraries:
+
+```bash
+pip install delta-sharing pyspark pandas
+```
+
+2. Place `config.share` in a safe location (for example, next to your script).
+
+3. Build the table URL in your script:
+
+```python
+table_url = "./config.share#&lt;user_name&gt;.&lt;client_name&gt;.&lt;table&gt;"
+```
+
+4. Minimal example (batch read):
+
+```python
+from pyspark.sql import SparkSession
+
+spark = SparkSession.builder.appName("DeltaSharingLocal").getOrCreate()
+
+df = (
+    spark.read.format("deltasharing")
+    .load(table_url)
+    .where("tsConnector > 1742258615000 AND siteName = 'siteXYZ' AND dataPoint = 'ACTIVE_POWER'")
+    .select("siteName", "dataPoint", "value", "unit", "tsConnector")
+)
+
+pdf = df.toPandas()
+print(pdf.head())
+```
+
+**Notes**:
+
+- `tsConnector` is an epoch timestamp in milliseconds. Adjust filters to your time window.
+- This method produces a batch snapshot. For larger pulls or continuous updates, use Method B.
+
+---
+
+## Method B — spark-submit (standalone Spark)
+
+**When to use**: heavier data, repeatable jobs with full logs, or when you need real-time “only new data” ingestion.
+
+**How it works**: install Spark locally, then launch your script with `spark-submit`, including the Delta Sharing connector package.
+
+### One-time Spark Setup
+
+```bash
+wget https://archive.apache.org/dist/spark/spark-3.4.2/spark-3.4.2-bin-hadoop3.tgz
+tar xzf spark-3.4.2-bin-hadoop3.tgz
+export SPARK_HOME=$PWD/spark-3.4.2-bin-hadoop3
+export PATH=$SPARK_HOME/bin:$PATH
+```
+
+### Batch launch template (snapshot reads)
+
+```bash
+spark-submit   --packages io.delta:delta-sharing-spark_2.12:0.6.4   your_script.py   --delta_table_path './config.share#&lt;user_name&gt;.&lt;client_name&gt;.&lt;table&gt;'
+```
+
+---
+
+### Real-Time Refresh with Structured Streaming
+
+For continuous ingestion of only new data, use Spark Structured Streaming. Unlike periodic batch jobs, a streaming job runs continuously, processing micro-batches (e.g., every 30 seconds). Spark automatically tracks progress in a checkpoint so that previously processed rows are not re-read.
+
+Minimal streaming example:
+
+```python
+from pyspark.sql import SparkSession
+
+table_url = "./config.share#&lt;user_name&gt;.&lt;client_name&gt;.&lt;table&gt;"
+
+spark = (
+    SparkSession.builder
+    .appName("DeltaSharingStreaming")
+    .getOrCreate()
+)
+```

@@ -1,0 +1,56 @@
+# Introduction
+
+Welcome to **Nexalis Cloud** documentation. This guide explains how to connect and consume industrial data from the Nexalis Platform. It is designed for both technical users (data engineers, developers) and business users (analysts, dashboard creators) who want to integrate Nexalis data into their workflows.
+
+## Accessing data from Nexalis Cloud — at a glance
+
+{/* Diagram */}
+<img src="/images/Nexalis_Cloud_Data_Access.png" alt="Access options overview" style={{ maxWidth: "100%" }} />
+
+You have **three options** for accessing and analyzing your data. Each addresses different needs for analytics, sharing, and BI:
+
+- **User-managed Databricks** — for advanced analytics, AI/ML, and fully customized pipelines.  
+- **Delta Sharing (open protocol)** — for flexible cross‑organization data sharing and replication across different tools.  
+- **Nexalis‑provided SQL Warehouse** — for quick connections with BI/reporting tools such as Power BI, Tableau, Excel, and Grafana.
+
+### What this guide covers
+
+- **An overview of each access option**, including best use cases and cost considerations.  
+- **A description of the data sources** you will receive (`gold_<user_name>_avg_std` and `gold_<user_name>_hf_std`).
+- **How to connect via Delta Sharing** (Databricks‑to‑Databricks and open protocol).  
+- **Practical Python/Spark examples** for batch and streaming.  
+- **How to connect BI tools and apps** to the Nexalis SQL Warehouse.
+
+By the end, you’ll know which option best fits your use case, how to configure access securely, and how to start querying Nexalis data for analysis and reporting.
+
+---
+
+## Options comparison (quick view)
+
+| **Option to access the data** | **Best For** | **Example Use Cases** |
+|---|---|---|
+| **#1 – User-managed Databricks** | **Data & AI workloads** | Custom & advanced analytics, AI/ML models, automated jobs, streaming data, dashboard creation, controlled access |
+| **#2 – Delta Sharing** | **Cross‑org data sharing** | Real‑time applications, scheduled reporting, multi‑tenant data replication |
+| **#3 – Nexalis‑provided SQL Warehouse** | **Analytics & BI tools** | Power BI, Excel, Grafana dashboards, ad‑hoc analysis |
+
+---
+
+## Options details
+
+| **Option to access the data** | **Technology** | **Cost Profile** | **Data Handling** | **Notes** |
+|---|---|---|---|---|
+| **#1 – User‑managed Databricks** | **Delta Sharing (Databricks‑to‑Databricks protocol)** | Client pays for **Databricks compute**; **egress cost*** | Data is **accessed directly** in client’s Databricks account | If you bring your own Databricks infra, **everything is possible** |
+| **#2 – Delta Sharing** | **Open sharing protocol** (REST; works with Spark connector and Python library) | **Egress cost*** | Data is **downloaded & replicated** | **Best for data pipelines, replication, or sharing with external systems** |
+| **#3 – Nexalis‑provided SQL Warehouse** | **JDBC/ODBC driver**, REST API, Python/Java client, etc. | **Egress costs***; **compute costs** are passed‑through and billed on usage | Data is **queried in place** | **Optimized for BI/reporting; integrates easily** |
+> _\*Egress cost is charged when data leaves the Nexalis Cloud region. Costs are passed‑through and billed on usage.*_
+---
+
+## Data sources you will receive
+
+You will be provisioned access to two tables:
+
+- **`gold_<user_name>_avg_std`** — Raw + standardized data, aggregated in **X‑minute intervals** (per‑agent configurable). Includes **min, max, count, avg**. _Boolean values are included in this table._  
+- **`gold_<user_name>_hf_std`** — Raw + standardized **high‑frequency** data (per‑second). Includes discrete tags; transformation adds standardized columns for cross‑vendor comparison. Values are scaled to Nexalis data‑model units.
+
+> _Tip: To filter only standardized tags, use a condition like `dataObject != null` in your queries._
+
