@@ -8,14 +8,12 @@
     "dark": "#0f172a"
   },
   "navigation": {
-    "root": "pages",
     "pages": [
-      { "group": "Overview", "pages": ["index"] },
-      { "group": "Data Model", "pages": ["data-model/data-sources", "data-model/exploration"] },
-      { "group": "Delta Sharing", "pages": ["delta-sharing/databricks-to-databricks", "delta-sharing/open-protocol"] },
-      { "group": "SQL Warehouse", "pages": ["sql-warehouse/index"] },
-      { "group": "API Reference", "pages": ["../api-reference/openapi"] }
+      { "group": "Overview", "pages": ["pages/introduction"] },
+      { "group": "Data Model", "pages": ["pages/data-model/data-sources", "pages/data-model/exploration"] },
+      { "group": "Delta Sharing", "pages": ["pages/delta-sharing/databricks-to-databricks", "pages/delta-sharing/open-protocol"] },
+      { "group": "SQL Warehouse", "pages": ["pages/sql-warehouse/index"] },
+      { "group": "API Reference", "pages": ["api-reference/openapi"] }
     ]
   }
 }
-
