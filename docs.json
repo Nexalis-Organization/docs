@@ -10,7 +10,7 @@
   "navigation": {
     "pages": [
       { "group": "Overview", "pages": ["pages/introduction"] },
-      { "group": "Data Model", "pages": ["pages/data-model/data-tables", "pages/data-model/exploration"] },
+      { "group": "Data", "pages": ["pages/data/data-tables", "pages/data/data-model"] },
       { "group": "Delta Sharing", "pages": ["pages/delta-sharing/databricks-to-databricks", "pages/delta-sharing/open-protocol"] },
       { "group": "SQL Warehouse", "pages": ["pages/sql-warehouse/index"] },
       { "group": "API Reference", "pages": ["api-reference/openapi"] }
