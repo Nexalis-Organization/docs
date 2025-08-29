@@ -2,24 +2,6 @@
 
 The **Nexalis Data Model** provides a standardized structure for accessing and analyzing industrial data across different asset types.
 
-When exploring Nexalis data, you will have access to two core standardized tables:
-
-- `gold_<user_name>_avg_std` — aggregated data in configurable intervals.
-- `gold_<user_name>_hf_std` — high‑frequency raw and standardized data.
-
-Both contain raw and standardized device data, but differ in **frequency, aggregation,** and whether **discrete tags** (booleans, enumerations) are included.
-
----
-
-## Comparison of Tables
-
-| Table Name                 | Data Frequency                              | Aggregation                         | Discrete Tags | Best For |
-|---------------------------|----------------------------------------------|-------------------------------------|---------------|----------|
-| `gold_<user_name>_avg_std` | X‑minute intervals (per‑agent configurable) | Aggregated (min, max, avg, count)   | No            | Trend analysis, reporting, standardized analog data |
-| `gold_<user_name>_hf_std`  | High frequency (per‑second raw data)        | None (raw values)                   | Yes           | Alarms, troubleshooting, detailed monitoring |
-
----
-
 ## Column Groups
 
 Most columns are shared across both tables, but there are some differences. **Presence** below is indicated neutrally as `both`, `avg_std`, or `hf_std`.
