@@ -1,6 +1,6 @@
 # Introduction
 
-Welcome to **Nexalis Cloud** documentation. This guide explains how to connect and consume industrial data from the Nexalis Platform. It is designed for both technical users (data engineers, developers) and business users (analysts, dashboard creators) who want to integrate Nexalis data into their workflows.
+Welcome to the **Nexalis Data Access** documentation. This guide explains how to connect and consume industrial data from the Nexalis Platform. It is designed for both technical users (data engineers, developers) and business users (analysts, dashboard creators) who want to integrate Nexalis data into their workflows.
 
 ## Accessing data from Nexalis Cloud — at a glance
 
@@ -45,12 +45,14 @@ By the end, you’ll know which option best fits your use case, how to configure
 > _\*Egress cost is charged when data leaves the Nexalis Cloud region. Costs are passed‑through and billed on usage.*_
 ---
 
-## Data sources you will receive
+## Data tables you will receive
 
 You will be provisioned access to two tables:
 
-- **`gold_<user_name>_avg_std`** — Raw + standardized data, aggregated in **X‑minute intervals** (per‑agent configurable). Includes **min, max, count, avg**. _Boolean values are included in this table._  
-- **`gold_<user_name>_hf_std`** — Raw + standardized **high‑frequency** data (per‑second). Includes discrete tags; transformation adds standardized columns for cross‑vendor comparison. Values are scaled to Nexalis data‑model units.
+- **`gold_<user_name>_avg_std`** — Contains raw and standardized data, **aggregated in X-minute intervals** (X-minute interval is a parameter of the Nexalis Agent). Includes minimum, maximum, count and average values. Does not include discrete tags.  
+- **`gold_<user_name>_hf_std`** — Contains raw and standardized **high‑frequency** data (per‑second). Includes discrete tags (e.g., booleans and enumerations for alarms and codes) 
+
+> Transformation adds standardized columns for cross-vendor comparison and values are scaled to the data model units.  
 
 > _Tip: To filter only standardized tags, use a condition like `dataObject != null` in your queries._
 
