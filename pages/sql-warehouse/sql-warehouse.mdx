@@ -22,7 +22,10 @@ Nexalis will provide:
 - `DATABRICKS_HTTP_PATH` — the endpoint path of the SQL warehouse  
 - `DATABRICKS_TOKEN` — a PAT generated on your behalf  
 
+The hostname and HTTP path specify where your SQL queries are sent, while the token authenticates your session. 
 Although easy to use, this method is not ideal for long-term production workflows.
+Reference: https://docs.databricks.com/aws/en/dev-tools/auth/pat
+
 
 ---
 
@@ -35,28 +38,36 @@ Nexalis will provide:
 - `DATABRICKS_CLIENT_SECRET`  
 - `DATABRICKS_TENANT_ID`  
 
-These values are used to request an OAuth token for SQL warehouse access. Best for production automations.
+These values are used together to request an OAuth token that your system will use to connect to the SQL warehouse. 
+This approach is the most secure for machine identities and is recommended for production automations.
+Reference: https://docs.databricks.com/aws/en/dev-tools/auth/oauth-m2m
+
 
 ---
 
 ## OAuth User-to-Machine (U2M)
 
-For analysts or BI users. Nexalis provides:
+This method is used when individual users need to log in interactively via BI tools or applications. 
+Nexalis will provide the workspace hostname and the OAuth configuration (client application ID, scopes, and redirect details). 
+Users typically log in through a browser or tool’s authentication dialog. Once authenticated, tokens are automatically refreshed without requiring manual updates.
+This approach offers a good balance between security and convenience for end users who regularly interact with dashboards, notebooks, or analysis tools.
+Reference: https://docs.databricks.com/aws/en/dev-tools/auth/oauth-u2m
 
-- Workspace hostname  
-- OAuth client app ID, scopes, and redirect details  
-
-Users log in interactively, tokens refresh automatically.
 
 ---
 
 ## Tutorials for Connecting
 
+Once your credentials have been provided by Nexalis, you can use them in the environment or tool of your choice. Below are step-by-step guides for the most common options.
+
 ### Python (Databricks SQL Connector)
 
+1.	Install the connector with:
 ```bash
 pip install databricks-sql-connector
 ```
+2.	Set the environment variables provided by Nexalis.
+3.	Connect using a short Python script. For example, with PAT authentication:
 
 ```python
 from databricks import sql
@@ -82,43 +93,43 @@ For OAuth (M2M/U2M), the only difference is how the token is retrieved.
 
 ### Power BI
 
-1. Open Power BI Desktop → **Get Data** → search **Databricks**  
-2. Enter the Server Hostname and HTTP Path  
-3. Choose authentication method:  
+1. Open Power BI Desktop → **Get Data**
+2. Search **Databricks**  
+3. Enter the Server Hostname and HTTP Path that Nexalis provided. 
+4. Choose authentication method:  
    - **OAuth2** (U2M)  
    - **Service Principal** (M2M)  
    - **Token** (PAT)  
-
+5. Load your tables and build dashboards.
 ⚠️ Some older versions of Power BI require the Databricks ODBC driver.
 
 ---
 
 ### Tableau
 
-1. Go to **Connect to a Server → Databricks**  
+1. In Tableau, Go to **Connect to a** and select **Databricks**  
 2. Enter Server Hostname + HTTP Path  
 3. Auth options:  
    - PAT → use `token` as username, PAT as password  
-   - OAuth / Service Principal if provided  
+   - OAuth / Service Principal 
+4. Begin querying and creating visualizations.
 
-⚠️ Tableau requires the Databricks ODBC driver.
+⚠️ Tableau requires the Databricks ODBC driver. If it’s missing, Tableau will prompt you with a download link.
 
 ---
 
 ### Excel (via ODBC)
 
-1. Install the Databricks ODBC driver  
-2. Configure DSN with Nexalis values:
-
+1. Install the Databricks ODBC driver from the Databricks website. 
+2. Configure a Data Source Name (DSN) with the values Nexalis gave you:
 ```text
 # PAT example
-AuthMech=3; UID=token; PWD=&lt;PAT&gt;;
-
+AuthMech=3; UID=<token>; PWD=<PAT>;
 # OAuth M2M example
-AuthMech=11; Auth_Flow=0; Auth_AccessToken=&lt;oauth-token&gt;;
+AuthMech=11; Auth_Flow=0; Auth_AccessToken=<oauth-token>;
 ```
-
-3. In Excel → **Data → Get Data → From ODBC** → select DSN  
+3. In Excel → **Data → Get Data → From ODBC** → select DSN
+4.	Run queries against the SQL warehouse directly from Excel.
 
 ---
 
