@@ -5,6 +5,22 @@ sidebar_position: 3
 
 ---
 
+## 1. Introduction
+
+
+The Modbus connector extracts values from Modbus devices and forwards the data to gRPC_kafka.
+Configuration is JSON‑based, enabling clear, repeatable deployments for both Modbus TCP and RTU environments.
+
+## Key Features
+
+- **Unified TCP & RTU support** – switch protocols per tag without changing code.
+- **Flexible polling triggers** – send data when registers change, at fixed intervals, or when values shift by a percentage.
+- **Batch grouping by request ID** – reduce bus chatter by bundling registers into shared requests.
+- **Comprehensive logging** – customizable log file location, size rotation, and log levels for easy troubleshooting.
+- **Byte‑order & data‑type handling** – interpret register values correctly with configurable endianness and type definitions.
+
+---
+
 ## 2. Configuration
 
 The Modbus connector is configured through a JSON file composed of a `logSettings` object and a `tagConfiguration` array. Each element of the array defines one register to poll and forward to the gRPC pipeline.
