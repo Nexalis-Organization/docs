@@ -1,0 +1,101 @@
+## 1) What Nexalis Agent does
+
+- Nexalis Agent **mirrors raw data** from on-premise or remote industrial assets to Nexalis Cloud in **real time**. **Industrial connectors (e.g., OPC UA, Modbus, etc.) extract data from assets**, and gRPC_kafka **loads this raw data securely into Nexalis Cloud**. This is what we describe as mirroring data.    
+- In addition to forwarding raw data streams, gRPC_kafka **computes averaged data** (e.g., 5-minute averages) before loading.
+- The Agent also provides **local buffering**: if the connection to the cloud is interrupted, data is stored on disk. Once connectivity is restored, the Agent **automatically backfills buffered data, ensuring no information is lost**.
+
+---
+
+Example of a Nexalis Agent setup using 1 DNP3 connector and 2 Modbus connectors (TCP and RTU) and a cloud data source.
+
+{/* Diagram */}
+<img src="/images/nexalis-agent.png" alt="Nexalis Platform Overview" style={{ maxWidth: "100%" }} />
+
+## 2) Technical requirements
+
+### Hardware Compatibility
+Nexalis Agent can be deployed on:
+- A physical server (x86 or ARM for Linux; 32 bits or 64 bits for Windows)
+- A Virtual Machine (VM) on a shared server
+
+---
+
+### Deployment options
+- **Linux build (standalone executable)** — Compatible with most mainstream Linux distributions (Debian, Ubuntu, Fedora, AlmaLinux, and others). Requires the following standard utilities: `procps`, `jq`, `unzip`, `tar` and `systemd`. Designed for lightweight and flexible deployments.
+- **Docker (containerized)** — Runs anywhere Docker is available; simplest operational footprint.
+- **Windows**  — Runs on >= Windows 7
+
+---
+
+### Server specifications
+- A minimum hardware specification of 2 vCPU and 4 GB of RAM is recommended to run the Nexalis Agent. This specification can handle 10000 events per second. 
+- 4 vCPU and 16GB of RAM can handle 35000 events per second.
+- Actual requirements may vary depending on tag volume, data frequency, and other site-specific factors, but this baseline is sufficient for large-scale deployments.
+
+---
+
+### Disk space specifications
+
+The Nexalis Agent reserves disk space at startup to avoid runtime issues caused by misconfigured sizes. This ensures that both buffering and logs have dedicated space and cannot unexpectedly fill the system disk.
+
+#### 1) Buffering size
+The Agent buffers data locally whenever the connection to Nexalis Cloud is interrupted.  
+
+- **Minimum recommended size:** 5 GB  
+- **Sizing formula:**  
+  ```
+  disk space (GB) ≈ event_rate (events/s) × retention_time (s) × 50 bytes / 1e9
+  ```
+  - Uses ~50 bytes per compressed event (includes a safety margin).  
+  - Example: for 1,000 events/s with 7 days retention → ~30.24 GB required.  
+
+This buffer guarantees reliable backfill once the cloud connection is restored.
+
+#### 2) Log size
+Each **industrial connector** and the **gRPC_kafka** component has configurable log size parameters (rotation, maximum file size, and retention).  
+Disk space for these logs is also reserved at Nexalis Agent startup to prevent disk exhaustion due to incorrect settings.
+
+---
+
+### Network, time, DNS
+- **Ports:** Cloud uplink defaults to **9092/TCP**; connectors may use **62541 (OPC UA)**, **502 (Modbus)**, **20000 (DNP3)**; **53 (DNS)**. Ensure required port openings are allowed.
+- **Time sync:** Enable **NTP** to ensure accurate timestamps.
+- **DNS:** Ensure resolvers (e.g., enterprise DNS or 8.8.8.8 / 8.8.4.4) are set so Nexalis Agent can reach cloud endpoints.
+
+---
+
+### Bandwidth requirements
+
+The Nexalis Agent is designed to operate with **minimal network bandwidth**.  
+
+- **Maximum bandwidth requirement:** approximately **20 kilobits per second**.  
+- This corresponds to the transmission of around **1,000 events per second**.  
+
+Such efficiency ensures scalable data handling even in environments with **constrained connectivity**.
+
+---
+
+### Connection status semantics
+
+The Nexalis Agent industiral connectors publish **connection status messages** every 10 seconds; gRPC_kafka forwards it to the cloud. Interpretation:
+
+| Local (to data source) | Link with Nexalis Cloud | Result in Nexalis Cloud                                                |
+|---|---|---|
+| TRUE  | TRUE  | Status messages received; **value = 1** (healthy). |
+| TRUE  | FALSE | No status messages received; **value = 1**; data is buffered by Agent. |
+| FALSE | TRUE  | Status messages received; **value = 0**; data needs to be backfilled if possible. |
+| FALSE | FALSE | No status messages received; **value = 0**; data needs to be backfilled if possible. |
+
+Example of an OPC UA connection status message:
+```json
+{ 
+  "siteName": "TEST_SITE1", 
+  "deviceID": "12345", 
+  "deviceModel": "./device_models/opcua_device.json",
+  "protocol": "opcua",
+  "dataPoint": "nexalisConnectionStatus",
+  "value": 1, 
+  "tsConnector": 1234567890123, 
+  "triggerType": "cyclic-10"
+} 
+```

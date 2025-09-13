@@ -1,0 +1,586 @@
+---
+title: OPC UA Connector Guide
+sidebar_position: 3
+---
+
+This guide explains how to configure and use the **OPC UA connector** in Nexalis Agent to collect data from OPC UA servers and forward it to Nexalis Cloud.
+
+---
+
+## 1. Introduction
+
+The OPC UA connector establishes secure communication with industrial devices supporting the **OPC Unified Architecture (UA)** protocol.  
+It supports secure sessions, multiple authentication modes, subscriptions, and tag discovery.
+
+Key features:
+- Secure communication to OPC UA servers with configurable security policies
+- Subscriptions to value changes with configurable sampling and publishing intervals using either:
+   - **addNodeIDs**: specify nodes to monitor; the connector will only subscribe to the configured nodes or
+   - **ignorePaths**: subscribe to all nodes except those listed. 
+   - Note: addNodesIDs and ignorePaths are exclusive to each other and at least one of these 2 methods needs to be configured.
+- Node-based tag configuration with pattern definition for flexible data collection  
+- Automatic recovery from connection or session failures  
+
+---
+
+## 2. Configuration
+
+### Quick-start example (username/password auth)
+
+Use this minimal, clean JSON as a starting point. This example uses **username/password** (simple) authentication and subscribes to **all** nodes by leaving `ignorePaths` empty.
+
+```json
+{
+  "deviceModel": "opcua-connector",
+  "logSettings": {
+    "logFilePath": "./opcua_connector.log",
+    "logFileMaxMBSize": 10,
+    "logFileMaxFiles": 10,
+    "logLevel": "info"
+  },
+  "timeout": 5,
+  "browseTimeout": 60,
+  "nodesPerBrowse": 100,
+  "nodesPerRead": 1000,
+  "nodesPerSubscribe": 20000,
+  "sourceTimestamp": false,
+  "serverTimestamp": true,
+  "ignorePaths": [],
+  "metaData": {
+    "subscriptionUpdatePeriod": 5,
+    "integrityScanPeriod": 3600
+  },
+  "securitySettings": {
+    "opcuaUser": "my_user",
+    "opcuaPassword": "my_password"
+  }
+}
+```
+
+### Alternative example (addNodeIDs + certificate authentication)
+
+This example shows how to **skip browsing** and directly subscribe to specific node IDs while enabling certificate-based security options.
+
+```json
+{
+  "deviceModel": "opcua-connector",
+  "logSettings": {
+    "logFilePath": "./opcua_connector.log",
+    "logFileMaxMBSize": 10,
+    "logFileMaxFiles": 10,
+    "logLevel": "info"
+  },
+  "timeout": 5,
+  "skipBrowse": true,
+  "addNodeIDs": [
+    "ns=1;s=[DEVICE]Server*",
+    "ns=1;s=[DEVICE]PATH/TAG"
+  ],
+  "metaData": {
+    "subscriptionUpdatePeriod": 1,
+    "integrityScanPeriod": 3600
+  },
+  "securitySettings": {
+    "opcuaUser": "opcuauser",
+    "opcuaPassword": "password",
+    "encryptionSettings": {
+      "applicationUri": "urn:open62541.client.application",
+      "certificatePath": "./certs/client.crt",
+      "privateKeyPath": "./certs/client.key",
+      "trustListPaths": ["./certs/rootCA.crt"],
+      "certRevoceListPaths": ["./certs/rootCA.crl.pem"]
+    },
+    "userCertificate": {
+      "certificatePath": "./certs/user.crt",
+      "privateKeyPath": "./certs/user.key"
+    }
+  }
+}
+```
+
+> **Note:** `addNodeIDs` and ignorePaths support wildcards (`*`, `?`). See **Appendix — Wildcard matching** below.
+
+### Configuration parameters
+
+#### deviceModel
+- **deviceModel**: Defines the OPC UA configuration profile (the JSON with node/tag definitions, auth, security, browse/subscribe options) for this server.
+- Because each OPC UA server typically has a unique tag tree and naming scheme, you usually create a dedicated deviceModel per server.
+- Naming convention: Brand_SiteName. Examples: Ignition_SiteA, Kepware_PlantWest, SiemensPLC_Line3.
+- Reuse deviceModel only if the OPC UA server’s node structure, security, and metadata behavior match the original profile. Otherwise, create a new profile (e.g., Ignition_SiteB).
+
+#### Logging (`logSettings`)
+- **logFilePath**: Path to the log file. Supports `%` placeholder to include the `deviceID` (e.g., `./connector_%.log`).
+- **logFileMaxMBSize**: Maximum log file size in MB before rotation. *Default: 10*.
+- **logFileMaxFiles**: Number of rotated files to retain. *Default: 10*.
+- **logLevel**: Log verbosity. Options include `debug`, `info`, `error`. *Default: info*.
+- If `logSettings` is not provided, defaults are used.
+
+#### Timeouts and nodes configuration
+- **timeout**: Timeout (seconds) for all services **except** browse. *Default: 5*.
+- **browseTimeout**: Timeout (seconds) for browse requests. *Default: 60* (browsing can be slow on large servers).
+- **nodesPerBrowse**: Max nodes per browse request. *Default: 100; Range: 1–1000*.
+- **nodesPerRead**: Max nodes per read request (used by integrity scan). *Default: 1000; Range: 1–10000*.
+- **nodesPerSubscribe**: Max nodes per subscription batch. *Default: 20000; Range: 1–50000*.
+
+#### Timestamp selection
+- **sourceTimestamp** *(bool)*: If true, sets `tsSource` of the JSON message from the data **source** timestamp (i.e., timestamp of the source of the OPC UA server). *Default: false*.
+- **serverTimestamp** *(bool)*: If true, sets `tsSource` of the JSON message from the **server** timestamp (i.e., OPC UA server timestamp). *Default: true*.
+  - If both are enabled and present, **sourceTimestamp is taken**.
+
+#### Node selection
+- **ignorePaths** *(array of strings)*: Nodes to **exclude**. Use this to subscribe to **all except** some nodes. Mutually exclusive with `addNodeIDs`.  
+  - Use `[]` to subscribe to **all** nodes.
+- **addNodeIDs** *(array of strings)*: Nodes to **include** explicitly. Mutually exclusive with `ignorePaths`.  
+- **skipBrowse** *(bool)*: When `true`, the connector will **not** browse and requires `addNodeIDs`. *Default: false*.
+
+#### Metadata
+- **subscriptionUpdatePeriod** *(seconds)*: How often values are published from the server to the connector.  
+- **integrityScanPeriod** *(seconds)*: Full scan period that pushes **all** values for subscribed nodes. *Minimum: 60*.
+
+### Security configurations
+
+The connector registers multiple OPC UA security policies (https://reference.opcfoundation.org). The following policies are supported both for secure channels and for user authentication:
+- **None** – no signing or encryption. Provided for compatibility but insecure.
+- **Basic128Rsa15** – RSA‑128 encryption with SHA‑1 signing. Deprecated.
+- **Basic256** – RSA‑256 encryption with SHA‑1 signing. Deprecated.
+- **Basic256Sha256** – RSA‑256 encryption with SHA‑256 signing. Recommended for legacy servers.
+- **Aes128_Sha256_RsaOaep** – AES‑128 encryption with RSA‑OAEP and SHA‑256 signing. Modern and secure.
+- **Aes256_Sha256_RsaPss** – AES‑256 encryption with RSA‑PSS and SHA‑256 signing. Most secure option.
+
+The server endpoint determines which policy is finally used during the handshake. The connector automatically attempts the most secure policy supported by the server.
+
+#### Security Modes
+
+`securitySettings.encryptionSettings` control the message security mode:
+
+| Mode | Required Flags | Description |
+|------|----------------|-------------|
+| **1 – None** | none (default) | No encryption or signing. Use only for testing. |
+| **2 – Sign** | `sign: true` | Messages are signed for integrity and authenticity. |
+| **3 – SignAndEncrypt** | `encrypt: true` (implies signing) | Messages are signed and encrypted for confidentiality, integrity, and authenticity. |
+
+> **Note**: When `encrypt` is `true`, signing is automatically enabled. Setting `sign: true` is optional in this case but may improve clarity.
+
+#### Authentication Methods
+
+The connector can authenticate to the server using several mechanisms:
+
+- **Anonymous** – no credentials. The server must explicitly allow this mode.
+- **Username/Password** – specify `opcuaUser` and `opcuaPassword`.
+- **Username/Password with Client Certificate** – some servers require a certificate in addition to credentials. Provide a `userCertificate` alongside the username and password.
+- **Certificate‑Only** – provide only `userCertificate` if the server uses certificate‑based client authentication.
+
+If authentication errors such as `BadUserAccessDenied`, `BadIdentityTokenInvalid`, or `BadIdentityTokenRejected` occur, inspect the server’s endpoint description and ensure that the selected security mode, policy, and authentication method are all supported.
+
+##### Example Endpoint Description
+
+```json
+{
+  "SecurityMode": 3,
+  "SecurityPolicyUri": "http://opcfoundation.org/UA/SecurityPolicy#Basic256Sha256",
+  "UserIdentityTokens": [
+    { "PolicyId": "UserName", "TokenType": 1 },
+    { "PolicyId": "Anonymous", "TokenType": 0 }
+  ]
+}
+```
+
+#### Certificates: Encryption vs. Authentication
+
+Two distinct certificates may be involved:
+
+##### Encryption Certificate
+Used to establish a secure channel.
+
+**Fields (in `encryptionSettings`):**
+- `certificatePath`
+- `privateKeyPath`
+- `applicationUri`
+- `trustListPaths`
+- `certRevoceListPaths`
+- `sign`
+- `encrypt`
+- `verify`
+
+**Automatic Generation**  
+If `certificatePath` or `privateKeyPath` is omitted while `sign` or `encrypt` is enabled, the connector automatically generates a self-signed certificate for the session.  
+- The certificate is held in memory and not written to disk.  
+- Servers that verify client certificates will reject this certificate unless it is manually trusted.
+
+**Server Verification**  
+- When `verify: true` (default), the server’s certificate is validated against the provided `trustListPaths` and `certRevoceListPaths`.  
+  - If the server’s certificate is not trusted or verification fails, the connection is rejected.  
+- Setting `verify: false` disables this check and accepts any server certificate.
+
+##### Authentication Certificate
+Used solely for client authentication.  
+
+Configured under `userCertificate` with its own:
+- `certificatePath`
+- `privateKeyPath`
+
+This certificate is **independent** of the encryption certificate.
+
+#### The `verify` Parameter
+`verify` resides inside `encryptionSettings` and determines whether the connector validates the server’s encryption certificate.
+
+- **`verify: true` (default)** – the server certificate must be valid and signed by one of the provided trust anchors.  
+- **`verify: false`** – any server certificate is accepted.  
+  - Suitable for testing or when using untrusted self-signed certificates.  
+
+**Note:** `verify` only applies when `sign` or `encrypt` is enabled. When using **mode 1 (None)** it has no effect.
+
+#### Example Configurations
+
+##### 1. No Security (Mode 1)
+```json
+{
+  "securitySettings": {}
+}
+```
+
+##### 2. Security Mode 2 – Sign with Provided Certificate
+```json
+{
+  "securitySettings": {
+    "opcuaUser": "paula",
+    "opcuaPassword": "paula123",
+    "encryptionSettings": {
+      "sign": true,
+      "verify": true,
+      "applicationUri": "urn:open62541.client.application",
+      "certificatePath": "../certs/client.crt",
+      "privateKeyPath": "../certs/client.key",
+      "trustListPaths": ["../certs/rootCA.crt"],
+      "certRevoceListPaths": ["../certs/rootCA.crl.pem"]
+    },
+    "userCertificate": {
+      "certificatePath": "../certs/user.crt",
+      "privateKeyPath": "../certs/user.key"
+    }
+  }
+}
+```
+
+##### 3. Security Mode 2 – Sign with Auto-Generated Certificate
+```json
+{
+  "securitySettings": {
+    "encryptionSettings": {
+      "sign": true,
+      "verify": false
+    }
+  }
+}
+```
+➡️ The connector generates a temporary self-signed certificate and skips server certificate verification.
+
+
+##### 4. Security Mode 3 – SignAndEncrypt
+```json
+{
+  "securitySettings": {
+    "opcuaUser": "paula",
+    "opcuaPassword": "paula123",
+    "encryptionSettings": {
+      "encrypt": true,
+      "verify": true,
+      "applicationUri": "urn:open62541.client.application",
+      "certificatePath": "../certs/client.crt",
+      "privateKeyPath": "../certs/client.key",
+      "trustListPaths": ["../certs/rootCA.crt"],
+      "certRevoceListPaths": ["../certs/rootCA.crl.pem"]
+    },
+    "userCertificate": {
+      "certificatePath": "../certs/user.crt",
+      "privateKeyPath": "../certs/user.key"
+    }
+  }
+}
+```
+
+##### 5. Security Mode 3 – SignAndEncrypt without Verification
+```json
+{
+  "securitySettings": {
+    "encryptionSettings": {
+      "encrypt": true,
+      "verify": false
+    }
+  }
+}
+```
+
+##### 6. Certificate-Only Authentication
+```json
+{
+  "securitySettings": {
+    "userCertificate": {
+      "certificatePath": "../certs/user.crt",
+      "privateKeyPath": "../certs/user.key"
+    },
+    "encryptionSettings": {
+      "encrypt": true,
+      "verify": true,
+      "certificatePath": "../certs/client.crt",
+      "privateKeyPath": "../certs/client.key",
+      "trustListPaths": ["../certs/rootCA.crt"]
+    }
+  }
+}
+```
+➡️ This configuration omits `opcuaUser` and `opcuaPassword`, relying solely on certificate-based authentication.
+
+
+#### Troubleshooting
+
+- **`BadCertificateInvalid` / `BadSecurityChecksFailed`**  
+  Provide a valid certificate in `encryptionSettings` and register it with the server, or disable verification for testing.
+
+- **`BadUserAccessDenied` / `BadIdentityTokenInvalid`**  
+  Ensure the selected authentication method is allowed by the server’s endpoint and that credentials and certificates match the server policy.
+
+---
+
+## 3. Message format
+
+```json
+{
+  "siteName": "site", #refers to the site where the data tag is coming from, to be set by users
+  "deviceID": "100", #unique ID to distinguish similar devices within the fleet of devices, to be set by users
+  "deviceModel": “opcua_model”, #defines the specific triggers and other configurations for each tag. 
+  "protocol": "OPC UA", #refers to the communication protocol used by the device
+  "dataPoint": “ns=1;s=[site]device/data_tag”, # data point where the value is read (e.g. OPC UA node)
+  "description": "data_tag”, #last part of the OPC UA description
+  "unit": null, # Not set with OPC UA
+  "value": 100, #instantaneous value read at the data point
+  "tsSource": 1720650038949, #timestamp of the value generated by the data source
+  "qualitySource": "Bad", #quality of the value generated by the data source. Only included when quality is **not** Good.
+  "tsConnector": 1727925815997, #unix timestamp in ms of when the Nexalis recorded the value
+  "triggerType": "changed", #Trigger used to send data to the cloud
+  "metaData": { #communication protocol specific parameters used to read the dataPoint value
+    "integrityScanPeriod": 3600,
+    "nx-agent-id": "fb9cf8e6-xxxx-xxxx-xxxx-be2aea9631d8",
+    "subscriptionUpdatePeriod": 1,
+    "type": "Int32"
+  }
+}
+```
+
+---
+
+## 4. Running the Connector
+
+The OPC UA connector is launched automatically by the Nexalis Agent.  
+No manual execution is required under normal circumstances.
+
+For **debugging purposes only**, you can start it manually without using the Nexalis Agent launcher, you need to be in the directory of the executable “opcua_connector” and require four items:
+- siteName: custom name of site where the data source is located
+- deviceID: custom unique identification of the data source (OPC UA server)
+- communicationAddress: IP address and port being used by the outstation. 
+- deviceModel: Json file that contains the OPC UA configurations (node definition, authentication, etc.). 
+
+```bash
+./opcua_connector --siteName SITE_1 --deviceID 100 --communicationAddress 127.0.0.1:4840 --deviceModel /path/to/your/device_config/opcua_model.json
+```
+
+---
+
+## 5. Python Script list_opc_ua_nodes.py
+
+The OPC UA connector comes with an additional script, list_opc_ua_nodes.py, which provides a list of all available nodes from a specific OPC UA server. 
+The output will be stored in opcua_nodes.csv. To run the program, use the following command line (username and password are optional, depending on the OPC UA server security policy): 
+
+Example:
+```bash
+python3 list_opc_ua_nodes.py opc.tcp://127.0.0.1:62541 opcuauser mypassword
+```
+
+---
+
+## 6. OPC UA Node Wildcard Matching
+
+### Supported Wildcards
+
+- `?` — matches **exactly one** character  
+- `*` — matches **zero or more** characters
+
+### Implementation Notes
+
+- The matcher first checks for wildcards with `find_first_of("*?")` to decide between **exact** vs **pattern** logic.  
+- With wildcards present, `wildcardMatch` performs a character‑by‑character comparison with **backtracking** for `*`.  
+- Matching is **case‑sensitive**.  
+- **Empty** patterns only match **empty** strings.  
+- Performance is optimized by skipping the wildcard engine when no wildcards are found.
+
+### Best Practices
+
+- Prefer **exact** matches whenever possible for better performance.  
+- Use `?` to match **one** character at a precise position.  
+- Use `*` for **variable‑length** segments.  
+- Avoid leading `*` unless you truly need a global match—it can be overly broad.  
+- Be specific to prevent unintended matches.
+
+#### Pattern Matching Rules & Examples
+
+##### Exact Matching
+When no `*` or `?` is present, a plain string comparison is used.
+
+**Examples**
+
+- **Pattern:** `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **String:**  `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **MATCH** (exact)
+
+- **Pattern:** `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **String:**  `ns=2;s=[WGS02]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **NO MATCH** (different device number)
+
+##### Single Character Wildcard (`?`)
+`?` matches **exactly one** character at its position.
+
+**Examples**
+
+- **Pattern:** `ns=2;s=[WGS0?]/MET11A02/GHI_TILT_ANGLE`  
+  **String:**  `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **MATCH** (`?` → `1`)
+
+- **Pattern:** `ns=2;s=[WGS0?]/MET11A02/GHI_TILT_ANGLE`  
+  **String:**  `ns=2;s=[WGS10]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **NO MATCH** (`?` expects one char after `0`, found `10`)
+
+##### Multiple Character Wildcard (`*`)
+`*` matches **zero or more** characters.
+
+**Examples**
+
+- **Pattern:** `ns=2;s=[WGS*]/MET11A02/GHI_TILT_ANGLE`  
+  **String:**  `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **MATCH** (`*` → `01`)
+
+- **Pattern:** `ns=2;s=[WGS01]/*/GHI_TILT_ANGLE`  
+  **String:**  `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **MATCH** (`*` → `MET11A02`)
+
+##### Complex Patterns
+Combine `*` and `?` as needed.
+
+**Examples**
+
+- **Pattern:** `ns=2;s=[WGS*]/MET*ANGLE`  
+  **String:**  `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **MATCH** (multiple segments)
+
+- **Pattern:** `ns=2;s=*MET11A02*`  
+  **String:**  `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **MATCH** (content before and after)
+
+### Usage in OPC UA Node Filtering
+
+#### Ignore Paths
+
+Exclude specific nodes from subscription.
+
+```jsonc
+// Configuration example
+"ignorePaths": [
+  "ns=2;s=[WGS01]/*/IGNORED_SENSOR",  // Ignore all IGNORED_SENSOR nodes from WGS01
+  "ns=2;s=[WGS??]/TEST/*",            // Ignore all test nodes from any WGS unit
+  "ns=2;s=[WGS01]/MET11A02/EXACT"     // Ignore a specific node (exact match)
+]
+```
+
+#### Add Node IDs
+
+Explicitly include nodes for subscription.
+
+```jsonc
+// Configuration example
+"addNodeIDs": [
+  "ns=2;s=[WGS*]/MET11A02/*_ANGLE",   // Subscribe to all angle measurements
+  "ns=2;s=[WGS01]/*/TEMPERATURE",     // Subscribe to all temperature nodes from WGS01
+  "ns=2;s=[WGS01]/MET11A02/SPECIFIC"  // Subscribe to a specific node (exact match)
+]
+```
+
+---
+
+## 7. OPC UA – Common Errors and Solutions (Q&A)
+
+### Can I use multiple OPC UA servers?
+**Yes.** Run multiple connector instances with **separate** config files—one per OPC UA server.
+
+### How often do I get values if `subscriptionUpdatePeriod` is 5 seconds?
+The OPC UA server **publishes at most the latest value** observed in each 5‑second window.  
+If three changes occur within that window, only the **third** (latest) is delivered; if nothing changes, **no message** is sent.  
+See OPC UA *requestedPublishingInterval* for more details: https://reference.opcfoundation.org/Core/Part4/v105/docs/5.13.3.2
+
+### What happens when new nodes are configured on the OPC UA server?
+They are discovered and subscribed to on the **next** `integrityScanPeriod` cycle.
+
+### What happens when a node is deleted on the OPC UA server?
+It is reported as **null** and continues to be pushed cyclically until the next `integrityScanPeriod` detects its removal.
+
+### What if a deleted node is recreated with the same NodeId?
+It is re‑subscribed during the next `integrityScanPeriod` and resumes normal operation.
+
+### What data types are supported?
+Standard OPC UA primitives such as **Boolean, Integer, Float, Double, String, DateTime**, and structured identifiers like **NodeId, QualifiedName, LocalizedText**.  
+**Not supported:** complex recursive structures, unions, diagnostic info.  
+**Vendor‑specific/custom types:** Not guaranteed. Provide a `.uamodel` or `.xml` for compatibility evaluation.
+
+### Error meanings?
+- **BadUserAccessDenied** → Likely wrong username/password.  
+- **BadIdentityTokenRejected** → Wrong user authentication method configured.  
+- **BadSecurityChecksFailed** → Certificate or security mode mismatch on the secure channel.  
+  - Pick **one**: `"encryptionSettings": {"sign": true}` **or** `"encryptionSettings": {"encrypt": true}`.
+
+### Request mechanisms
+1. **Inter‑request delay:** Client issues browse/subscribe/read/monitor requests with a **fixed 10 ms** spacing (hardcoded).  
+2. **Failure backoff (browse/subscribe):** On failure, the client waits **60 s** before retrying to avoid server overload.  
+3. **Why 60 s?** Prevents bursty retries during transient outages.  
+4. **Can I change these values?** No — both the **10 ms** spacing and **60 s** retry delay are hardcoded.  
+5. **Does the 60 s backoff apply to read/monitor?** No — it is specific to **browse** and **subscribe** failures.
+
+### Unable to subscribe to nodes
+If you see timeouts and secure channel churn during large subscriptions, lower `nodesPerSubscribe` (e.g., `5000`).
+
+```
+[info] Sub1 subscribing to 20000 new nodes (0 subscribed)
+[error] MonitoredItems_createDataChanges: BadTimeout (1/10 tries) reconnect
+[warning] client: Sending the request failed with status BadConnectionClosed
+[info] client: Client Status: ChannelState: Fresh, SessionState: Created, ConnectStatus: BadNotConnected
+[error] runIterate: BadNotConnected (1/10 tries) reconnect
+```
+
+### OPC UA client discover Browse BadTimeout
+```
+[error] Browse: BadTimeout (N/10 tries) reconnect
+[error] Browse: BadTimeout
+[error] Bad status: BadTimeout
+[error] Browse failed: BadTimeout
+[error] browse failed
+[error] Node discovery failed.
+```
+This indicates node discovery exceeded time limits during browse.
+**Work‑around:** Skip browsing and subscribe directly:
+
+```json
+{
+  "skipBrowse": true,
+  "addNodeIDs": [
+    "ns=1;s=[DEVICE]PATH/TAG"
+  ]
+}
+```
+> **Important:** `skipBrowse` is **not compatible** with `ignorePaths` (no browsing occurs).
+
+### Why do “Good” quality points show `qualitySource = null` in the cloud?
+**Good** (status code `0`) is treated as “no explicit quality issue,” so `qualitySource` is **omitted** (`null`).  
+Non‑Good statuses (e.g., `Bad`, `BadOutOfService`) are sent verbatim; unknown codes become `Unknown StatusCode`.
+
+### How many nodes can I subscribe to?
+It depends on server capacity and network conditions. For best performance, **batch** large subscriptions and consider reducing `nodesPerSubscribe` (e.g., `5000`).
+
+
+

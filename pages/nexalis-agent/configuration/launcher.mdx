@@ -1,0 +1,88 @@
+---
+title: Nexalis Agent launcher Guide
+sidebar_position: 3
+---
+
+This page describes how to configure the Nexalis Agent launcher.
+
+## 1) What `nexalis_agent.sh` does
+Starts **gRPC_kafka**, all configured **connectors**, and a **watchdog** that restarts any failed component.
+
+## 2) Nexalis Agent config file (`config.json`)
+`config.json` must be in the same folder as `nexalis_agent.sh`. It lists devices per connector type:
+
+```json
+{
+  "first_connector_type": [
+    {
+      "deviceModel": "./connector/device_models/model.json",
+      "communicationAddress": "IP:PORT or SERIAL:PORT",
+      "siteName": "siteName",
+      "deviceID": "unique-device-id"
+    }
+  ],
+  "other_connector_type": [
+    { "...": "..." },
+    { "...": "..." }
+  ]
+}
+```
+
+**OPC UA example with two clients**
+```json
+{
+  "opcua_connector": [
+    {
+      "deviceModel": "./device_models/OPCUA_Solar_SITENAME.json",
+      "communicationAddress": "opc.tcp://[IP]:[PORT]",
+      "siteName": "SITENAME",
+      "deviceID": "OPCUA_Solar_SITENAME"
+    },
+    {
+      "deviceModel": "./device_models/OPCUA_BESS_SITENAME.json",
+      "communicationAddress": "opc.tcp://[IP]:[PORT]",
+      "siteName": "SITENAME",
+      "deviceID": "OPCUA_BESS_SITENAME"
+    }
+  ]
+}
+```
+
+**Mixed example (2 Modbus clients + 1 DNP3 client)**
+```json
+{
+  "modbus_connector": [
+    {
+      "deviceModel": "./device_models/inverter1.json",
+      "communicationAddress": "localhost:50001",
+      "siteName": "My site",
+      "deviceID": "Inverter_1"
+    },
+    {
+      "deviceModel": "./device_models/inverter2.json",
+      "communicationAddress": "localhost:50002",
+      "siteName": "My site",
+      "deviceID": "Inverter_2"
+    }
+  ],
+  "dnp3_connector": [
+    {
+      "deviceModel": "./device_models/outstation.json",
+      "communicationAddress": "localhost:50003",
+      "siteName": "My site",
+      "deviceID": "Outstation"
+    }
+  ]
+}
+```
+
+> **gRPC_kafka only:** use an **empty** `config.json` (`{}`) to start without connectors.
+
+### Required fields per device
+- `deviceModel` — path to the connector’s device-specific config (absolute or relative to the **connector executable**)
+- `communicationAddress` — IP:port or serial; formats depend on connector
+- `siteName` — groups devices by physical site
+- `deviceID` — unique identifier within your fleet
+
+---
+

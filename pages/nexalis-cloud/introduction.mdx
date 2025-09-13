@@ -1,0 +1,61 @@
+# Introduction
+
+Welcome to the **Nexalis Cloud API Access** documentation. This guide explains how to connect and consume industrial data from **Nexalis Cloud**. It is designed for both technical users (data engineers, developers) and business users (analysts, dashboard creators) who want to integrate Nexalis data into their workflows.
+
+## Accessing data from Nexalis Cloud — at a glance
+
+{/* Diagram */}
+<img src="/images/nexalis-databricks-diagram.png" alt="Access options overview" style={{ maxWidth: "100%" }} />
+
+You have **three options** for accessing and analyzing your data. Each addresses different needs for analytics, sharing, and BI:
+
+- **User-managed Databricks** — for advanced analytics, AI/ML, and fully customized pipelines.  
+- **Delta Sharing (open protocol)** — for flexible cross‑organization data sharing and replication across different tools.  
+- **Nexalis‑provided SQL Warehouse** — for quick connections with BI/reporting tools such as Power BI, Tableau, Excel, and Grafana.
+
+### What this guide covers
+
+- **An overview of each access option**, including best use cases and cost considerations.  
+- **A description of the data tables** you will receive (`gold_<user_name>_avg_std` and `gold_<user_name>_hf_std`).
+- **How to connect via Delta Sharing Databricks‑to‑Databricks**
+- **How to connect via Delta Sharing open protocol**
+- **How to connect to the Nexalis Databricks SQL Warehouse for BI tools and apps**.
+- **Practical examples** Python/Spark code examples, guide to connect the data to Excel, Power BI, and more.
+
+By the end, you’ll know which option best fits your use case, how to configure access securely, and how to start querying data for analytics.
+
+---
+
+## Options comparison (quick view)
+
+| **Option to access the data** | **Best For** | **Example Use Cases** |
+|---|---|---|
+| **#1 – User-managed Databricks** | **Data & AI workloads** | Custom & advanced analytics, AI/ML models, automated jobs, streaming data, dashboard creation, controlled access |
+| **#2 – Delta Sharing** | **Cross‑org data sharing** | Real‑time applications, scheduled reporting, multi‑tenant data replication |
+| **#3 – Nexalis‑provided SQL Warehouse** | **Analytics & BI tools** | Power BI, Excel, Grafana dashboards, ad‑hoc analysis |
+
+---
+
+## Options details
+
+| **Option to access the data** | **Technology** | **Cost Profile** | **Data Handling** | **Notes** |
+|---|---|---|---|---|
+| **#1 – User‑managed Databricks** | **Delta Sharing (Databricks‑to‑Databricks protocol)** | Client pays for **Databricks compute**; **egress cost*** | Data is **accessed directly** in client’s Databricks account | Benefit from the **full range of Databricks data and AI capabilities**. |
+| **#2 – Delta Sharing** | **Open sharing protocol** (REST; works with Spark connector and Python library) | **Egress cost*** | Data is **downloaded & replicated** | **Best for data pipelines, replication, or sharing with external systems** |
+| **#3 – Nexalis‑provided SQL Warehouse** | **JDBC/ODBC driver**, REST API, Python/Java client, etc. | **Egress costs***; **compute costs** are passed‑through and billed on usage | Data is **queried in place** | **Optimized for BI/reporting; integrates easily** |
+> _\*Egress cost is charged when data leaves the Nexalis Cloud region. Costs are passed‑through and billed on usage.*_
+
+---
+
+## Summary
+
+- **Choose User-managed Databricks** if you are building custom data pipelines, advanced analytics, or AI/ML models on top of the Nexalis Platform.  
+- **Choose Delta Sharing (open protocol)** if you need to replicate data across organizations, integrate with external systems, or feed it into custom pipelines outside of Databricks.  
+- **Choose Nexalis-provided SQL Warehouse** if your main goal is creating BI dashboards or running ad-hoc queries with tools like Power BI, Tableau, or Grafana.  
+
+---
+
+## References
+
+- [Databricks Delta Sharing product page](https://www.databricks.com/product/delta-sharing)  
+- [Connect from anywhere to Databricks SQL](https://www.databricks.com/blog/2022/06/29/connect-from-anywhere-to-databricks-sql.html)

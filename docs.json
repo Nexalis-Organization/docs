@@ -1,5 +1,5 @@
 {
-  "name": "Nexalis Cloud Docs",
+  "name": "Nexalis Docs",
   "logo": "/logo/NEXALIS_Logo.svg",
   "theme": "mint",
   "colors": {
@@ -9,10 +9,34 @@
   },
   "navigation": {
     "pages": [
-      { "group": "Overview", "pages": ["pages/introduction"] },
-      { "group": "Data", "pages": ["pages/data/data-tables", "pages/data/data-model"] },
-      { "group": "Delta Sharing", "pages": ["pages/delta-sharing/databricks-to-databricks", "pages/delta-sharing/open-protocol"] },
-      { "group": "SQL Warehouse", "pages": ["pages/sql-warehouse/sql-warehouse"] }
+      {
+        "group": "Overview",
+        "pages": [
+          "pages/introduction"
+        ]
+      },
+      {
+        "group": "Nexalis Cloud",
+        "pages": [
+          "pages/nexalis-cloud/introduction",
+          "pages/nexalis-cloud/data/data-tables",
+          "pages/nexalis-cloud/data/data-model",
+          "pages/nexalis-cloud/delta-sharing/databricks-to-databricks",
+          "pages/nexalis-cloud/delta-sharing/open-protocol",
+          "pages/nexalis-cloud/sql-warehouse/sql-warehouse"
+        ]
+      },
+      {
+        "group": "Nexalis Agent",
+        "pages": [
+          "pages/nexalis-agent/technical requirements",
+          "pages/nexalis-agent/installation",
+          "pages/nexalis-agent/configuration/launcher",
+          "pages/nexalis-agent/configuration/gRPC_kafka",
+          "pages/nexalis-agent/configuration/connectors/opc ua"
+        ]
+      }
     ]
   }
 }
+

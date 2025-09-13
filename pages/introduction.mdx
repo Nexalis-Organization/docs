@@ -1,61 +1,44 @@
 # Introduction
 
-Welcome to the **Nexalis Data Access** documentation. This guide explains how to connect and consume industrial data from the Nexalis Platform. It is designed for both technical users (data engineers, developers) and business users (analysts, dashboard creators) who want to integrate Nexalis data into their workflows.
+Nexalis provides an **open, cloud-native industrial data platform** that transforms real-time operational data into **AI-ready intelligence**.  
+Our platform connects diverse industrial assets, unifies complex vendor data, and enables powerful analytics and applications.
 
-## Accessing data from Nexalis Cloud — at a glance
+---
+
+## 🌐 Nexalis Cloud
+The **Nexalis Cloud** is a secure and scalable environment for managing industrial data.
+
+- **Data Ingestion**: High-frequency, low-latency ingestion from multiple sites.  
+- **AI-Based Transformation**: Unifies complex and proprietary vendor-specific data into a unified model.  
+- **Data Orchestration**: Automates workflows, error handling, and optimization.  
+- **Compute & Storage**: Secure storage for raw and standardized data.  
+- **Visualization**: Full visibility into the health of the Nexalis industrial data infrastructure.  
+- **Sharing**: Powerful APIs for advanced analytics, business intelligence, and AI applications.  
+- **Security**: Encryption at rest and in transit, role-based access control and regular audits.  
+
+---
+
+## 🏠 Nexalis Agent
+The **Nexalis Agent** is the edge software that ensures reliable, real-time data flow from on-premise and remote assets to the cloud.
+
+- **Flexible Deployment**: Available on Linux, Docker, or Windows; VM, on-prem hardware, or deployed remotely in the cloud.  
+- **Data Collection**: Connects to industrial devices with protocols such as Modbus, OPC UA, DNP3, OPC XML DA, etc.
+- **Automated Data Flow**: Configure automated data streaming by time intervals, value changes, or percentage changes, with built-in support to compute data averages (e.g., 5-minute averages).  
+- **Real-Time**: Streams industrial data in real time for immediate insights.  
+- **Reliability**: On-disk buffering prevents data loss during outages or when connectivity to the cloud is interrupted.
+- **Rapid Onboarding**: Connect your data to the cloud in minutes with no complex integration thanks to our unique **EL(T) mechanism — Extract, Load, (Transform) —**; **Extracts** data from industrial systems, **Loads** it into **Nexalis Cloud**, and only then applies data **Transformations** as needed. 
+
+---
+
+## 📊 Platform Overview Diagram
+
+The diagram below illustrates how **Nexalis Agent** and **Nexalis Cloud** work together to create an open, secure, and interoperable industrial data platform:
 
 {/* Diagram */}
-<img src="/images/nexalis-databricks-diagram.png" alt="Access options overview" style={{ maxWidth: "100%" }} />
-
-You have **three options** for accessing and analyzing your data. Each addresses different needs for analytics, sharing, and BI:
-
-- **User-managed Databricks** — for advanced analytics, AI/ML, and fully customized pipelines.  
-- **Delta Sharing (open protocol)** — for flexible cross‑organization data sharing and replication across different tools.  
-- **Nexalis‑provided SQL Warehouse** — for quick connections with BI/reporting tools such as Power BI, Tableau, Excel, and Grafana.
-
-### What this guide covers
-
-- **An overview of each access option**, including best use cases and cost considerations.  
-- **A description of the data tables** you will receive (`gold_<user_name>_avg_std` and `gold_<user_name>_hf_std`).
-- **How to connect via Delta Sharing Databricks‑to‑Databricks**
-- **How to connect via Delta Sharing open protocol**
-- **How to connect to the Nexalis Databricks SQL Warehouse for BI tools and apps**.
-- **Practical examples** Python/Spark code examples, guide to connect the data to Excel, Power BI, and more.
-
-By the end, you’ll know which option best fits your use case, how to configure access securely, and how to start querying data for analytics.
+<img src="/images/nexalis-data-platform.png" alt="Nexalis Platform Overview" style={{ maxWidth: "100%" }} />
 
 ---
 
-## Options comparison (quick view)
-
-| **Option to access the data** | **Best For** | **Example Use Cases** |
-|---|---|---|
-| **#1 – User-managed Databricks** | **Data & AI workloads** | Custom & advanced analytics, AI/ML models, automated jobs, streaming data, dashboard creation, controlled access |
-| **#2 – Delta Sharing** | **Cross‑org data sharing** | Real‑time applications, scheduled reporting, multi‑tenant data replication |
-| **#3 – Nexalis‑provided SQL Warehouse** | **Analytics & BI tools** | Power BI, Excel, Grafana dashboards, ad‑hoc analysis |
-
----
-
-## Options details
-
-| **Option to access the data** | **Technology** | **Cost Profile** | **Data Handling** | **Notes** |
-|---|---|---|---|---|
-| **#1 – User‑managed Databricks** | **Delta Sharing (Databricks‑to‑Databricks protocol)** | Client pays for **Databricks compute**; **egress cost*** | Data is **accessed directly** in client’s Databricks account | Benefit from the **full range of Databricks data and AI capabilities**. |
-| **#2 – Delta Sharing** | **Open sharing protocol** (REST; works with Spark connector and Python library) | **Egress cost*** | Data is **downloaded & replicated** | **Best for data pipelines, replication, or sharing with external systems** |
-| **#3 – Nexalis‑provided SQL Warehouse** | **JDBC/ODBC driver**, REST API, Python/Java client, etc. | **Egress costs***; **compute costs** are passed‑through and billed on usage | Data is **queried in place** | **Optimized for BI/reporting; integrates easily** |
-> _\*Egress cost is charged when data leaves the Nexalis Cloud region. Costs are passed‑through and billed on usage.*_
-
----
-
-## Summary
-
-- **Choose User-managed Databricks** if you are building custom data pipelines, advanced analytics, or AI/ML models on top of the Nexalis Platform.  
-- **Choose Delta Sharing (open protocol)** if you need to replicate data across organizations, integrate with external systems, or feed it into custom pipelines outside of Databricks.  
-- **Choose Nexalis-provided SQL Warehouse** if your main goal is creating BI dashboards or running ad-hoc queries with tools like Power BI, Tableau, or Grafana.  
-
----
-
-## References
-
-- [Databricks Delta Sharing product page](https://www.databricks.com/product/delta-sharing)  
-- [Connect from anywhere to Databricks SQL](https://www.databricks.com/blog/2022/06/29/connect-from-anywhere-to-databricks-sql.html)
+## 📚 Next Steps
+- Explore how to connect and consume your industrial data from **Nexalis Cloud** → [Nexalis Cloud Documentation](./nexalis-cloud/introduction)  
+- Learn how to deploy and configure the **Nexalis Agent** → [Nexalis Agent Documentation](./nexalis-agent/introduction)  
