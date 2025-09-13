@@ -1,0 +1,17 @@
+Welcome to the **Nexalis Agent** documentation. This guide explains how to install and configure **Nexalis Agent**. It is designed for technical users (e.g., SCADA engineers) who need to extract data from industrial systems.
+
+---
+
+## What Nexalis Agent does
+
+- Nexalis Agent **extracts raw data** from on-premise or remote industrial assets and **loads** it to Nexalis Cloud in **real time**. **Industrial connectors (e.g., OPC UA, Modbus, etc.) extract data from assets**, and gRPC_kafka **loads this raw data securely into Nexalis Cloud**. This is what we describe as mirroring data.    
+- In addition to forwarding raw data streams, gRPC_kafka **computes averaged data** (e.g., 5-minute averages) before loading.
+- The Agent also provides **local buffering**: if the connection to the cloud is interrupted, data is stored on disk. Once connectivity is restored, the Agent **automatically backfills buffered data, ensuring no information is lost**.
+
+---
+
+## Example of a Nexalis Agent setup 
+1 DNP3 connector and 2 Modbus connectors (TCP and RTU) and a cloud data source.
+
+{/* Diagram */}
+<img src="/images/nexalis-agent.png" alt="Nexalis Platform Overview" style={{ maxWidth: "100%" }} />

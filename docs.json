@@ -29,11 +29,13 @@
       {
         "group": "Nexalis Agent",
         "pages": [
-          "pages/nexalis-agent/technical requirements",
+          "pages/nexalis-agent/introduction",
+          "pages/nexalis-agent/technical_requirements",
           "pages/nexalis-agent/installation",
           "pages/nexalis-agent/configuration/launcher",
           "pages/nexalis-agent/configuration/gRPC_kafka",
-          "pages/nexalis-agent/configuration/connectors/opc ua"
+          "pages/nexalis-agent/configuration/connectors/opc_ua",
+          "pages/nexalis-agent/configuration/connectors/modbus"
         ]
       }
     ]

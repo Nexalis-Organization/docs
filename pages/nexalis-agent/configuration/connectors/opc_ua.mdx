@@ -1,5 +1,5 @@
 ---
-title: OPC UA Connector Guide
+title: Guide - OPC UA Connector
 sidebar_position: 3
 ---
 
@@ -383,6 +383,8 @@ For **debugging purposes only**, you can start it manually without using the Nex
 ```bash
 ./opcua_connector --siteName SITE_1 --deviceID 100 --communicationAddress 127.0.0.1:4840 --deviceModel /path/to/your/device_config/opcua_model.json
 ```
+
+The connector forwards the gRPC messages to localhost on port 50051 by default. If there is a need to change this, you can do so when instantiating the connector in the command line with --grpcAddress my.grpc.server.com:55555.
 
 ---
 

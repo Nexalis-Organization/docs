@@ -1,0 +1,362 @@
+---
+title: Guide - Modbus connector
+sidebar_position: 3
+---
+
+---
+
+## 2. Configuration
+
+The Modbus connector is configured through a JSON file composed of a `logSettings` object and a `tagConfiguration` array. Each element of the array defines one register to poll and forward to the gRPC pipeline.
+
+### `logSettings`
+
+| Field              | Type   | Description                                                                     |
+|--------------------|--------|---------------------------------------------------------------------------------|
+| `logFilePath`      | string | Path template for log files (the `%` is replaced with the device ID)            |
+| `logFileMaxMBSize` | number | Maximum size per log file in MB before rotation                                 |
+| `logFileMaxFiles`  | number | Number of rotated files to keep                                                 |
+| `logLevel`         | string | Logging level (`trace`, `debug`, `info`, etc.)                                  |
+
+### `tagConfiguration` entries
+
+Each entry describes one Modbus register to read.
+
+#### Common fields
+
+| Field         | Type   | Description                                                                         |
+|---------------|--------|-------------------------------------------------------------------------------------|
+| `deviceModel` | string | Device model identifier used to locate register metadata                            |
+| `protocol`    | string | Communication protocol: `modbus_tcp` or `modbus_rtu`                               |
+| `dataPoint`   | string | Register address; may include an optional bit offset (`32-0` for bit 0 at address 33) |
+| `description` | string | Human‑readable description of the register                                          |
+| `unit`        | string | Unit of measurement for the value                                                   |
+| `triggerType` | string | When to send data: `changed`, `cyclic-N` (N seconds), or `percentage-N` (N %)        |
+| `commParams`  | object | Protocol-specific communication parameters (see below)                              |
+
+#### `commParams` for both TCP and RTU
+
+| Field            | Type   | Description                                                               |
+|------------------|--------|---------------------------------------------------------------------------|
+| `modbusServerID` | number | Slave ID on the Modbus network (1‑247)                                   |
+| `numberOfRetries`| number | Retry attempts before marking a request failed                           |
+| `timeout`        | number | Response timeout in milliseconds                                         |
+| `requestID`      | number | Identifier used to group registers into a single Modbus request          |
+| `type`           | string | Data type of the register (e.g. `s16`, `u32`, `float32`)                 |
+| `bytesOrder`     | string | Endianness / register order: `ABCD`, `BADC`, `DCBA`, `CDAB`               |
+| `cyclicPeriod`   | number | Interval for polling the register in milliseconds                        |
+| `registerType`   | string | Modbus register class: `holdingregisters`, `inputregisters`, `coils`, or `discreteinputs` |
+
+#### Additional `commParams` for `modbus_rtu`
+
+| Field            | Type   | Description                                             |
+|------------------|--------|---------------------------------------------------------|
+| `serialParity`   | string | Parity bit (`none`, `even`, `odd`, `space`, or `mark`)  |
+| `serialDataBits` | number | Data bits (5–8)                                         |
+| `serialStopBits` | number | Stop bits (1–3)                                         |
+| `serialBaudRate` | number | Baud rate in bits/s (e.g. 9600, 19200)                  |
+
+### Example configurations
+
+#### Modbus TCP
+
+```json
+{
+  "logSettings": {
+    "logFilePath": "./log_files/test_modbus_log_file.log",
+    "logFileMaxMBSize": 1,
+    "logFileMaxFiles": 3,
+    "logLevel": "debug"
+  },
+  "tagConfiguration": [
+    {
+      "deviceModel": "tcp_model",
+      "protocol": "modbus_tcp",
+      "dataPoint": "hr/1",
+      "description": "Description1",
+      "unit": "kWh",
+      "triggerType": "changed",
+      "commParams": {
+        "modbusServerID": 3,
+        "numberOfRetries": 5,
+        "timeout": 1000,
+        "requestID": 1,
+        "type": "s32",
+        "bytesOrder": "ABCD",
+        "cyclicPeriod": 1000,
+        "registerType": "holdingregisters"
+      }
+    },
+    {
+      "deviceModel": "tcp_model",
+      "protocol": "modbus_tcp",
+      "dataPoint": "hr/3",
+      "description": "Description1",
+      "unit": "kWh",
+      "triggerType": "cyclic-1",
+      "commParams": {
+        "modbusServerID": 3,
+        "numberOfRetries": 5,
+        "timeout": 1000,
+        "requestID": 1,
+        "type": "s32",
+        "bytesOrder": "ABCD",
+        "cyclicPeriod": 5000,
+        "registerType": "holdingregisters"
+      }
+    },
+    {
+      "deviceModel": "tcp_model",
+      "protocol": "modbus_tcp",
+      "dataPoint": "hr/10",
+      "description": "Description1",
+      "unit": "kWh",
+      "triggerType": "percentage-5",
+      "commParams": {
+        "modbusServerID": 3,
+        "numberOfRetries": 5,
+        "timeout": 1000,
+        "requestID": 2,
+        "type": "u16",
+        "bytesOrder": "ABCD",
+        "cyclicPeriod": 1000,
+        "registerType": "holdingregisters"
+      }
+    }
+  ]
+}
+```
+
+#### Modbus RTU
+
+```json
+[
+  {
+    "deviceModel": "rtu_model",
+    "protocol": "modbus_rtu",
+    "dataPoint": "hr/1",
+    "description": "Description1",
+    "unit": "kWh",
+    "triggerType": "cyclic-1",
+    "commParams": {
+      "serialParity": "none",
+      "serialDataBits": 5,
+      "serialStopBits": 1,
+      "serialBaudRate": 1200,
+      "numberOfRetries": 5,
+      "timeout": 500,
+      "bytesOrder": "ABCD",
+      "cyclicPeriod": 1000,
+      "registerType": "holdingregisters",
+      "type": "s16",
+      "requestID": 1
+    }
+  },
+  {
+    "deviceModel": "rtu_model",
+    "protocol": "modbus_rtu",
+    "dataPoint": "hr/2",
+    "description": "Description2",
+    "unit": "kWh",
+    "triggerType": "percentage-5",
+    "commParams": {
+      "bytesOrder": "ABCD",
+      "cyclicPeriod": 1000,
+      "numberOfRetries": 5,
+      "registerType": "holdingregisters",
+      "requestID": 2,
+      "serialBaudRate": 1200,
+      "serialDataBits": 5,
+      "serialParity": "none",
+      "serialStopBits": 1,
+      "timeout": 500,
+      "type": "s16"
+    }
+  }
+]
+```
+
+### Triggers
+
+The Modbus connector can decide when to send data to Nexalis Cloud using **triggers**.  
+Each data point can be configured with a trigger type.
+
+#### Trigger Types
+
+- **Cyclic**  
+  Sends data at fixed intervals.  
+  Example: `"triggerType": "cyclic-1"` → every 1 second.
+
+- **Percentage**  
+  Sends data if the new value changes by more than a set percentage compared to the last sent value.  
+  Example: `"triggerType": "percentage-5"` → ±5% change.  
+  - If both values are 0, no trigger.  
+  - If last value = 0 and new ≠ 0, trigger.
+
+- **Changed**  
+  Sends data whenever a value changes (regardless of amount or time).  
+  Example: `"triggerType": "changed"`
+
+#### Notes
+- First value is always sent (even if no change).  
+- Prevents sending duplicate/unnecessary data.  
+- Triggers can be set per data point.
+
+---
+
+## 3. Message format
+
+```json
+{
+    "siteName": "TEST_SITE1", #refers to the site where the data tag is coming from, to be set by users
+    "deviceID": "1", #distinguish similar devices within the fleet of devices, to be set by users
+    "deviceModel": "SMAv123", #refers to the model of the device being mirrored
+    "protocol": "modbus_tcp", #refers to the communication protocol used by the device
+    "dataPoint": "hr/1", # where the value is read (e.g. Modbus register address)
+    "description": "Description10", #description of the data point
+    "unit": "kWh", #units associated to the data point
+    "value": 100, #instantaneous value read at the data point
+    "tsSource": null, #timestamp of the value generated by the device, always null for modbus.
+    "qualitySource": null, #quality of the value generated by the device, always null for modbus.
+    "tsConnector": 1727925815997, #unix timestamp in ms of when the Nexalis connector recorded the value
+    "triggerType": "cyclic-1", #configuration for when to send data to the cloud
+    "metaData": { #communication protocol specific parameters used to read the dataPoint value
+        "modbusServerID": 1, #identifier for device on the network
+        "numberOfRetries": 5, #number of attempts to retry request in case of communication failure 
+        "timeout": 500, #timeout period for the request to be considered failed in milliseconds
+        "requestID": 1, #Used to aggregate multiple data points within a single reading request
+        "type": "s16", #specifies the data type of the register value
+        "bytesOrder": "ABCD", #defines the order of the bytes when interpreting multi-byte values
+        "cyclicPeriod": 1, #period in seconds for cyclic reading requests
+        "registerType": "holdingregisters" #type of register being accessed. Options are: coils, discreteinputs, coils, holdingregisters or inputregisters.
+    }
+}
+```
+
+---
+
+## 4. Running the Connector
+
+The Modbus connector is launched automatically by the Nexalis Agent.  
+No manual execution is required under normal circumstances.
+
+For **debugging purposes only**, you can start it manually without using the Nexalis Agent launcher, you need to be in the directory of the executable “modbus_connector” and require four items:
+- siteName: custom name of site where the data source is located
+- deviceID: custom unique identification of the data source (OPC UA server)
+- communicationAddress: IP address and port being used by the outstation. 
+- deviceModel: Json file that contains the OPC UA configurations (node definition, authentication, etc.). 
+
+TCP:
+```bash
+./modbus_connector --siteName SITE_1 --deviceID 100 --communicationAddress 127.0.0.1:4840 --deviceModel /path/to/your/device_config/modbus_model.json
+```
+
+RTU:
+```bash
+./modbus_connector --siteName SITE_0 --deviceID 50 --communicationAddress /dev/ttyUSB0:42,43,44 --deviceModel ./device_model42.json,./device_model43.json,./device_model44.json
+```
+
+The connector forwards the gRPC messages to localhost on port 50051 by default. If there is a need to change this, you can do so when instantiating the connector in the command line with --grpcAddress my.grpc.server.com:55555.
+---
+
+## 5. Modbus data type
+
+This section provides a detailed explanation of the possible
+configurable data types for the Nexalis agent Modbus connector. These
+types determine how data is structured, interpreted, and transmitted
+between a Modbus server and the Nexalis agent.
+
+-   Signed Integer Types
+
+    -   **s8**: 8-bit signed integer (-128 to 127).
+    -   **s16**: 16-bit signed integer (-32,768 to 32,767).
+    -   **s32**: 32-bit signed integer (-2,147,483,648 to 2,147,483,647).
+    -   **s64**: 64-bit signed integer (-9,223,372,036,854,775,808 to 9,223,372,036,854,775,807).
+
+-   Unsigned Integer Types
+
+    -   **u8**: 8-bit unsigned integer (0 to 255).
+    -   **u16**: 16-bit unsigned integer (0 to 65,535).
+    -   **u32**: 32-bit unsigned integer (0 to 4,294,967,295).
+    -   **u64**: 64-bit unsigned integer (0 to 18,446,744,073,709,551,615).
+
+-   Floating-Point Types
+
+    -   **float16**: 16-bit floating-point number, IEEE 754 half precision (one registers).
+    -   **float32**: 32-bit single-precision floating-point number, IEEE 754 single precision (two registers).
+    -   **float64**: 64-bit double-precision floating-point number, IEEE 754 double precision (four registers).
+
+-   String Types
+
+    -   **string-N**: N-byte fixed-length string (use \"A\" or \"B\" as byteorder to skip most or least significant bytes). For example, string-4.
+    -   **utf8-N**: N-byte UTF-8 encoded string (use A or B as byteorder to skip most or least significant bytes). For example, utf8-4.
+    -   **ascii-N**: N-byte ASCII string (use A or B as byteorder to skip most or least significant bytes). For example, ascii-4.
+    -   **binary-N**: N-byte binary string (Base64 encoded) (use A or B as byteorder to skip most or least significant bytes). For example, binary-4.
+
+-   Timestamp Types
+
+    -   **timestamp-uint32**: uint32 timestamp in seconds converted into 64bit integer milliseconds.
+    -   **timestamp-uint64**: uint64 timestamp in seconds converted into 64bit integer milliseconds.
+    -   **timestamp-uint64-ms**: uint64 timestamp in milliseconds converted into 64bit integer milliseconds.
+    -   **timestamp-float64**: float64 timestamp in seconds converted into 64bit integer milliseconds.
+    -   **timestamp-float64-ms**: float64 timestamp in millisecond converted into 64bit integer milliseconds.
+    -   **timestamp-ntp**: ntp style timestamp 32 bit second and 32 bit fractional seconds converted into 64bit integer milliseconds
+
+-   Bit Types
+
+    -   **bit**: Single bit Boolean
+    -   **\[Address\]-N**: Boolean extraction from a register. For example, 45-0 (register 45, bit 0). 45-3 means we extract the fourth bit.
+    -   **bit-N**: N bits extracted from a specific register, the bit offset can be specified with LSB0 in the dataPoint. For example, dataPoint: 45-5 (register 45, bit 5) and bit-3 (3 bits from 45-5)
+
+## 5. Modbus general information
+
+## Modbus data model
+
+Modbus servers store values on register addresses. A Modbus register
+address is a specific location within a Modbus-compatible device (such
+as a sensor, actuator, or controller) where data is stored and can be
+read or written. These addresses are used in Modbus communication to
+specify where the data should be accessed or modified. A Modbus register
+is characterized by 1) Register type 2) Register Address 3) Size 4)
+Access and 5) byte order. There are four primary types of Modbus
+registers, each serving a different purpose:
+
+Table 1. Modbus register types
+
+| Register Type       | Address Range | Register size | Access        | Use             |
+|---------------------|---------------|---------------|---------------|-----------------|
+| Coil Registers      | 00001–09999   | 1 bit (0 or 1)| Read/Writing  | Binary output   |
+| Discrete Inputs     | 10001–19999   | 1 bit (0 or 1)| Read only     | Binary input    |
+| Holding Registers   | 40001–49999   | 16 bits       | Read/Writing  | Analog output   |
+| Input Registers     | 30001–39999   | 16 bits       | Read only     | Analog input    |
+
+
+The technical manual, or pdf documentation, of a Modbus device usually
+contains a list of all available registers, listed by type.
+
+The type of Modbus registers used defines the read and write permissions
+on the registers. The goal of the Nexalis Modbus connector is to mirror
+asset data to the cloud, hence it only supports reading values, not
+writing.
+
+The registers may be grouped together in a single request using only
+consecutive and not overlapping registers. This is configurable in the
+Nexalis Modbus connector using the key "*requestID*". A request contains
+at most 125 registers for RTU or 123 registers for TCP. As Modbus
+operates on register range, this limit means that the difference between
+the last address + type size and the first register address must be
+lower or equal to 122 for TCP and 124 for RTU.
+
+The Modbus specification does not specify exactly how the data is stored
+in the registers. The transmission order of bytes and words depends on
+the manufacturer. The Nexalis Modbus connector uses the \"*bytesOrder*\"
+attribute to specify the order in which the bytes are transmitted.
+
+Table 2. Modbus Register Bytes Order
+
+| bytesOrder | Example Value | Byte Order Description                |
+|------------|---------------|----------------------------------------|
+| "ABCD"     | AE41 5652     | high byte first, high word first (**big endian**) |
+| "CDAB"     | 5652 AE41     | high byte first, low word first        |
+| "ABDC"     | 41AE 5256     | low byte first, high word first        |
+| "DCBA"     | 5256 41AE     | low byte first, low word first (**little endian**) |
