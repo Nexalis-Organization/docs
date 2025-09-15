@@ -1,0 +1,285 @@
+---
+title: Guide - DNP3 connector
+sidebar_position: 4
+---
+
+## 1. Introduction
+
+The DNP3 connector extracts values from DNP3 outstations and forwards the data to gRPC_kafka.  
+Configuration is JSON-based, enabling clear, repeatable deployments for DNP3 environments.
+
+## Key Features
+
+- **DNP3 client (Master) support** – communicate with one or more outstations.  
+- **Class-based scanning** – mirror data by DNP3 class (0–3) instead of single indices.  
+- **Flexible configuration** – per-class or per-index configuration available.  
+- **Comprehensive logging** – log rotation, file templates, and log levels for easy troubleshooting.  
+
+---
+
+## 2. Configuration
+
+The DNP3 connector is configured through a JSON file composed of a `logSettings` object and a `tagConfiguration` array.  
+Each element of the array defines one DNP3 class or index group to poll and forward.
+
+There are **two ways to configure tags** in the connector:
+
+1. **Class-based configuration**  
+   - The simplest approach.  
+   - You configure the connector to poll entire DNP3 classes (0–3).  
+   - All indices belonging to the class are collected automatically and forwarded to the cloud.  
+   - Useful when you want complete mirroring of all data points without manually listing them.
+
+2. **Per-index configuration**  
+   - A more granular approach.  
+   - You can specify a list of exact indices (tags) to poll within a class.  
+   - Only those data points are read and forwarded.  
+   - Useful for optimizing bandwidth or focusing on a subset of values.
+
+---
+
+### `logSettings`
+
+| Field              | Type   | Description                                                                     |
+|--------------------|--------|---------------------------------------------------------------------------------|
+| `logFilePath`      | string | Path template for log files (the `%` is replaced with the device ID)            |
+| `logFileMaxMBSize` | number | Maximum size per log file in MB before rotation                                 |
+| `logFileMaxFiles`  | number | Number of rotated files to keep                                                 |
+| `logLevel`         | string | Logging level (`trace`, `debug`, `info`, etc.)                                  |
+
+### `tagConfiguration` entries
+
+Each entry describes either a DNP3 **class** or a set of specific **indices**.
+
+#### Common fields
+
+| Field         | Type   | Description                                                                 |
+|---------------|--------|-----------------------------------------------------------------------------|
+| `deviceModel` | string | Device model identifier                                                     |
+| `classID`     | number | DNP3 class ID (0–3)                                                         |
+| `triggerType` | string | When to send data: `changed`, `cyclic-N` (N seconds), or `percentage-N` (N %)|
+| `metaData`    | object | Protocol-specific communication parameters                                  |
+
+#### Optional per-index field
+
+| Field       | Type     | Description                                              |
+|-------------|----------|----------------------------------------------------------|
+| `dataPoints`| string[] | List of specific data points (e.g. `"Binary/1"`, `"Analog/3"`) |
+
+### Example 1: Class-based configuration
+
+```json
+{
+    "logSettings": {
+        "logFilePath": "./log_files/test_dnp3_log_file.log",
+        "logFileMaxMBSize": 1,
+        "logFileMaxFiles": 3,
+        "logLevel": "debug"
+    },
+    "tagConfiguration": [
+        {
+            "deviceModel": "dnp3_model",
+            "classID": 0,
+            "triggerType": "cyclic-1000",
+            "metaData": {
+            "cyclicPeriod": 1
+            }
+        },
+        {
+            "deviceModel": "dnp3_model",
+            "classID": 1,
+            "triggerType": "changed",
+            "metaData": {
+            "cyclicPeriod": 1
+            }
+        },
+        {
+            "deviceModel": "dnp3_model",
+            "classID": 2,
+            "triggerType": "percentage-5",
+            "metaData": {
+            "cyclicPeriod": 1
+            }
+        },
+        {
+            "deviceModel": "DNP3 device model",
+            "classID": 3,
+            "triggerType": "cyclic-5",
+            "metaData": {
+            "cyclicPeriod": 1
+            }
+        }
+    ]
+}
+```
+
+### Example 2: Per-index configuration
+
+```json
+{
+    "logSettings": {
+        "logFilePath": "./log_files/test_dnp3_log_file.log",
+        "logFileMaxMBSize": 1,
+        "logFileMaxFiles": 3,
+        "logLevel": "debug"
+    },
+    "tagConfiguration": [
+        {
+            "deviceModel": "DNP3 device model",
+            "classID": 1,
+            "triggerType": "changed",
+            "metaData": {
+                "cyclicPeriod": 2
+            },
+            "dataPoints": [
+                "Binary/1",
+                "Analog/1",
+                "DoubleBitBinary/1",
+                "Binary/4",
+                "Analog/4",
+                "DoubleBitBinary/4"
+            ]
+        },
+        {
+            "deviceModel": "DNP3 device model",
+            "classID": 2,
+            "triggerType": "changed",
+            "metaData": {
+                "cyclicPeriod": 4
+            },
+            "dataPoints": [
+                "Binary/2",
+                "Analog/2",
+                "DoubleBitBinary/2",
+                "Binary/5",
+                "Analog/5",
+                "DoubleBitBinary/5"
+            ]
+        },
+        {
+            "deviceModel": "DNP3 device model",
+            "classID": 3,
+            "triggerType": "changed",
+            "metaData": {
+                "cyclicPeriod": 6
+            },
+            "dataPoints": [
+                "Binary/3",
+                "Analog/3",
+                "DoubleBitBinary/3",
+                "Binary/6",
+                "Analog/6",
+                "DoubleBitBinary/6"
+            ]
+        }
+    ]
+}
+
+```
+
+---
+
+## 3. Message format
+
+```json
+{
+    "dataPoint": "Analog/0",
+    "description": "DNP3 data point",
+    "deviceID": "test device",
+    "deviceModel": "DNP3 device model",
+    "metaData": {
+        "class": 0,
+        "nx-agent-id": "fb9cf8e6-xxxx-xxxx-xxxx-be2aea9631d8",
+        "registerType": "Analog",
+        "type": "double"
+    },
+    "protocol": "DNP3",
+    "qualitySource": "RESTART",
+    "siteName": "test site",
+    "triggerType": "changed",
+    "tsConnector": 1754003248853,
+    "tsSource": 0,
+    "unit": null,
+    "value": 0.0
+}
+```
+
+---
+
+## 4. Running the Connector
+
+The DNP3 connector is launched automatically by the Nexalis Agent.  
+For **debugging only**, it can be started manually:
+
+```bash
+./dnp3_connector --siteName SITE_1 --deviceID 100 --communicationAddress 127.0.0.1:502 --deviceModel /path/to/device_config/dnp3_model.json
+```
+
+Default gRPC forwarding: `localhost:50051`  
+Use `--grpcAddress` to override.  
+
+---
+
+## 5. Supported DNP3 Data Types
+
+| DataPoint Prefix       | Description                   | Data Type in Cloud |
+|------------------------|-------------------------------|--------------------|
+| Binary                 | Binary input (status)         | bool               |
+| DoubleBitBinary        | Double-bit input              | uint8_t            |
+| Analog                 | Analog input                  | double             |
+| Counter                | Counter input                 | uint32_t           |
+| FrozenCounter          | Snapshot counter              | uint32_t           |
+| BinaryOutputStatus     | Status of binary output       | bool               |
+| AnalogOutputStatus     | Status of analog output       | double             |
+| TimeAndInterval        | Timestamped interval values   | TimeAndInterval    |
+| OctetString            | Binary/string data            | string             |
+| DNPTime                | DNP3 time value               | DNPTime            |
+
+---
+
+## 6. DNP3 General Information
+
+The DNP3 protocol does not support reading individual object indices for reading specific data points. Instead, it uses polling or scanning methods that discovers and reads multiple object indices grouped by class.
+
+###  Classes 
+- Class 0 Integrity Poll:
+  Purpose: Retrieves all current values data points at the outstation.
+  Usage: Typically performed at startup or at cyclic periods to get a complete snapshot of the current state of all data points.
+- Class 1 Poll:
+  Purpose: Retrieves a list of all changes in data from the last poll.
+  Usage: Used to monitor and retrieve updates for high-priority data points.
+- Class 2 Poll:
+  Purpose: Retrieves a list of all changes in data from the last poll.
+  Usage: Used to monitor and retrieve updates for medium-priority data points.
+- Class 3 Poll:
+ 	Purpose: Retrieves a list of all changes in data from the last poll.
+ 	Usage: Used to monitor and retrieve updates for low-priority data points.
+
+> Recommendation: By using a combination of an initial Integrity Poll (i.e., Class 0) and periodic Class 1-3 polls, the Nexalis DNP3 connector ensures comprehensive monitoring and efficient real-time data updating in Nexalis Cloud.
+
+### DNP3 Object Variations
+
+In DNP3, each object type (such as Binary, Analog, or Counter) can be represented in different **variations**.  
+A variation defines the **format and level of detail** used when encoding and transmitting data from the outstation (DNP3 server) to the master.
+
+- **Binary Inputs**  
+  - *Packed format*: multiple inputs encoded in a single byte (bit-packed).  
+  - *With flags*: includes additional status flags such as online/offline or communication quality.
+
+- **Analog Inputs**  
+  - 16-bit integer values.  
+  - 32-bit integer values.  
+  - 16-bit with status flags.  
+  - 32-bit with status flags.
+
+- **Counters**  
+  - 16-bit counter values.  
+  - 32-bit counter values.  
+  - 16-bit counters with status flags.  
+  - 32-bit counters with status flags.
+
+### Important Notes
+- Variations are **configured on the DNP3 outstation** (server side), not in the Nexalis DNP3 connector.  
+- The connector does **not select or override variations**; it polls classes and mirrors the data exactly as provided by the outstation.  
+- This means the same type of data (e.g., an analog input) may arrive with different precision or with/without flags, depending on the device configuration.  
+- The Nexalis connector’s role is to interpret the incoming format correctly and forward it in JSON, preserving the raw information without transformation.

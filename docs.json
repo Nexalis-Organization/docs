@@ -35,7 +35,9 @@
           "pages/nexalis-agent/configuration/launcher",
           "pages/nexalis-agent/configuration/gRPC_kafka",
           "pages/nexalis-agent/configuration/connectors/opc_ua",
-          "pages/nexalis-agent/configuration/connectors/modbus"
+          "pages/nexalis-agent/configuration/connectors/modbus",
+          "pages/nexalis-agent/configuration/connectors/dnp3",
+          "pages/nexalis-agent/configuration/connectors/other_connectors"
         ]
       }
     ]

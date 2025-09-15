@@ -135,7 +135,9 @@ This example shows how to **skip browsing** and directly subscribe to specific n
 
 #### Metadata
 - **subscriptionUpdatePeriod** *(seconds)*: How often values are published from the server to the connector.  
-- **integrityScanPeriod** *(seconds)*: Full scan period that pushes **all** values for subscribed nodes. *Minimum: 60*.
+- **integrityScanPeriod** *(seconds)*: Full scan period that pushes **all** values for subscribed nodes. *Minimum: 60*. 
+  - Note 1: There is a 2‑second spacing between integrity scan read requests, which means the integrity scan duration depends on nodesPerRead and the total number of nodes. 
+  - Note 2: The integrity scan does not start immediately on connector launch; it waits for a random interval to avoid simultaneous scans across multiple agents.
 
 ### Security configurations
 

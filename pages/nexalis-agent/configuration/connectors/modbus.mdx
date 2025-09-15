@@ -146,77 +146,59 @@ Each entry describes one Modbus register to read.
 #### Modbus RTU
 
 ```json
-[
-  {
-    "deviceModel": "rtu_model",
-    "protocol": "modbus_rtu",
-    "dataPoint": "hr/1",
-    "description": "Description1",
-    "unit": "kWh",
-    "triggerType": "cyclic-1",
-    "commParams": {
-      "serialParity": "none",
-      "serialDataBits": 5,
-      "serialStopBits": 1,
-      "serialBaudRate": 1200,
-      "numberOfRetries": 5,
-      "timeout": 500,
-      "bytesOrder": "ABCD",
-      "cyclicPeriod": 1000,
-      "registerType": "holdingregisters",
-      "type": "s16",
-      "requestID": 1
-    }
+{
+  "logSettings": {
+    "logFilePath": "./log_files/test_modbus_log_file.log",
+    "logFileMaxMBSize": 1,
+    "logFileMaxFiles": 3,
+    "logLevel": "debug"
   },
-  {
-    "deviceModel": "rtu_model",
-    "protocol": "modbus_rtu",
-    "dataPoint": "hr/2",
-    "description": "Description2",
-    "unit": "kWh",
-    "triggerType": "percentage-5",
-    "commParams": {
-      "bytesOrder": "ABCD",
-      "cyclicPeriod": 1000,
-      "numberOfRetries": 5,
-      "registerType": "holdingregisters",
-      "requestID": 2,
-      "serialBaudRate": 1200,
-      "serialDataBits": 5,
-      "serialParity": "none",
-      "serialStopBits": 1,
-      "timeout": 500,
-      "type": "s16"
+  "tagConfiguration": [
+    {
+        "deviceModel": "rtu_model",
+        "protocol": "modbus_rtu",
+        "dataPoint": "hr/1",
+        "description": "Description1",
+        "unit": "kWh",
+        "triggerType": "cyclic-1",
+        "commParams": {
+            "serialParity": "none",
+            "serialDataBits": 5,
+            "serialStopBits": 1,
+            "serialBaudRate": 1200,
+            "numberOfRetries": 5,
+            "timeout": 500,
+            "bytesOrder": "ABCD",
+            "cyclicPeriod": 1000,
+            "registerType": "holdingregisters",
+            "type": "s16",
+            "requestID": 1
+        }
+    },
+    {
+        "deviceModel": "rtu_model",
+        "protocol": "modbus_rtu",
+        "dataPoint": "hr/2",
+        "description": "Description2",
+        "unit": "kWh",
+        "triggerType": "percentage-5",
+        "commParams": {
+            "bytesOrder": "ABCD",
+            "cyclicPeriod": 1000,
+            "numberOfRetries": 5,
+            "registerType": "holdingregisters",
+            "requestID": 2,
+            "serialBaudRate": 1200,
+            "serialDataBits": 5,
+            "serialParity": "none",
+            "serialStopBits": 1,
+            "timeout": 500,
+            "type": "s16"
+        }
     }
-  }
-]
+  ]
+}
 ```
-
-### Triggers
-
-The Modbus connector can decide when to send data to Nexalis Cloud using **triggers**.  
-Each data point can be configured with a trigger type.
-
-#### Trigger Types
-
-- **Cyclic**  
-  Sends data at fixed intervals.  
-  Example: `"triggerType": "cyclic-1"` → every 1 second.
-
-- **Percentage**  
-  Sends data if the new value changes by more than a set percentage compared to the last sent value.  
-  Example: `"triggerType": "percentage-5"` → ±5% change.  
-  - If both values are 0, no trigger.  
-  - If last value = 0 and new ≠ 0, trigger.
-
-- **Changed**  
-  Sends data whenever a value changes (regardless of amount or time).  
-  Example: `"triggerType": "changed"`
-
-#### Notes
-- First value is always sent (even if no change).  
-- Prevents sending duplicate/unnecessary data.  
-- Triggers can be set per data point.
 
 ---
 
@@ -237,6 +219,7 @@ Each data point can be configured with a trigger type.
     "tsConnector": 1727925815997, #unix timestamp in ms of when the Nexalis connector recorded the value
     "triggerType": "cyclic-1", #configuration for when to send data to the cloud
     "metaData": { #communication protocol specific parameters used to read the dataPoint value
+        "nx-agent-id": "fb9cf8e6-xxxx-xxxx-xxxx-be2aea9631d8",
         "modbusServerID": 1, #identifier for device on the network
         "numberOfRetries": 5, #number of attempts to retry request in case of communication failure 
         "timeout": 500, #timeout period for the request to be considered failed in milliseconds
@@ -324,9 +307,9 @@ between a Modbus server and the Nexalis agent.
     -   **\[Address\]-N**: Boolean extraction from a register. For example, 45-0 (register 45, bit 0). 45-3 means we extract the fourth bit.
     -   **bit-N**: N bits extracted from a specific register, the bit offset can be specified with LSB0 in the dataPoint. For example, dataPoint: 45-5 (register 45, bit 5) and bit-3 (3 bits from 45-5)
 
-## 5. Modbus general information
+## 6. Modbus general information
 
-## Modbus data model
+### Modbus data model
 
 Modbus servers store values on register addresses. A Modbus register
 address is a specific location within a Modbus-compatible device (such
