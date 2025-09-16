@@ -50,6 +50,8 @@ Each entry describes one Modbus register to read.
 | `triggerType` | string | When to send data: `changed`, `cyclic-N` (N seconds), or `percentage-N` (N %)        |
 | `commParams`  | object | Protocol-specific communication parameters (see below)                              |
 
+> Note on **dataPoint**: The connector strips any text before the final / in the dataPoint value and uses only the number portion for the register address. This means prefixes (e.g., hr) are optional and serve only as human-readable hints; the register type is taken from commParams.registerType. It is useful to distinguish from modbus registers having the same addresses but on different registerType. 
+
 #### `commParams` for both TCP and RTU
 
 | Field            | Type   | Description                                                               |
@@ -140,6 +142,13 @@ Each entry describes one Modbus register to read.
       }
     }
   ]
+}
+```
+
+> A bit offset can be appended with a -. The number after - selects the bit (0‑based) within the addressed register. Example configurations from the repository show usage such as "dataPoint": "45-3", meaning bit 3 of register 45:
+```json
+{
+  "dataPoint": "hr/45-3"
 }
 ```
 
