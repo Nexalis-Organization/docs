@@ -1,6 +1,7 @@
 # Data Model
 
 The **Nexalis Data Model** provides a standardized structure for accessing and analyzing industrial data across different asset types.
+This model comes as a **template provided by Nexalis**, but it is **customizable by users** to adapt to specific requirements.
 
 ## Column Groups
 
@@ -15,12 +16,12 @@ Most columns are shared across both tables, but there are some differences. **Pr
 - **protocol** — *Presence:* `both`; communication protocol used  
 
 ### Standardization fields
-- **assetType** — *Presence:* `both`; standardized device type (e.g., inverter, meter)  
-- **logicalNode** — *Presence:* `both`; standardized function type (e.g., DC Measurements)  
-- **dataObject** — *Presence:* `both`; standardized tag (e.g., phase voltage)  
-- **subDataObject** — *Presence:* `both`; finer breakdown (e.g., phase A)  
-- **engUnits** — *Presence:* `both`; standardized engineering units  
-- **measurementType** — *Presence:* `both`; Analog vs Discrete  
+- **assetType** — *Presence:* `both`; standardized device type (e.g., Solar inverter, Storage inverter, Meteo station, Meter, Wind turbine, etc.)
+- **logicalNode** — *Presence:* `both`; standardized function type (e.g., MMDC: DC Measurements)
+- **dataObject** — *Presence:* `both`; standardized tag (e.g., PhV: phase voltage)
+- **subDataObject** — *Presence:* `both`; finer breakdown (e.g., phsA: phase A)
+- **engUnits** — *Presence:* `both`; standardized engineering units
+- **measurementType** — *Presence:* `both`; Analog type vs Discrete type
 
 ### Data values
 - **dataPoint** — *Presence:* `both`; device‑specific identifier (e.g., Modbus register, OPC UA tag)  

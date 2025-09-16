@@ -1,0 +1,60 @@
+# Table Examples
+
+This page provides examples of the actual tables and values available when querying through the **Delta Sharing API**. It complements the [Data Model](./nexalis-cloud/data/data-model) page by showing concrete outputs for raw, standardized, averaged, and high-frequency data.
+
+---
+
+## Raw Data
+
+Raw data comes directly from the device source. **dataPoint** is unmodified from the communication protocol.
+
+**Example:**
+
+| siteName | deviceModel | deviceID  | subDeviceID       | dataPoint                                                         |
+|----------|-------------|-----------|-------------------|-------------------------------------------------------------------|
+| *…*      | Ignition    | INV_8896  | INV_8896          | Inverter_tags/INV_8896/VPHSCA                                     |
+| *…*      | Ignition    | TRK_88103 | TRK_88103/NCU_2/37| NexTracker_tags/TRK_88103/NCU_2/Setpoints/Tracker_Setpoint_37/... |
+| *…*      | Ignition    | INV_11B131| INV_11B131        | Inverter_tags/INV_11B131/TOTW                                     |
+
+---
+
+## Standardized Data
+
+Raw tags are mapped to the **Nexalis Reference Data Model**. This adds semantic fields such as `assetType`, `logicalNode`, `dataObject`, `engUnits`, and `measurementType`.
+
+**Example:**
+
+| subDeviceID       | dataPoint                                   | assetType | logicalNode | dataObject | subDataObject | engUnits | measurementType |
+|-------------------|---------------------------------------------|-----------|-------------|------------|---------------|----------|-----------------|
+| INV_8896          | …/INV_8896/VPHSCA                          | INV       | MMXU        | PPV        | phsCA         | V        | Analog          |
+| TRK_88103/NCU_2/37| …/Tracker_Setpoint_37/Setpoint              | TRKMOT    | MainGAPC    | PosReq     | –             | –        | Analog          |
+| INV_11B131        | …/INV_11B131/TOTW                          | INV       | MMXU        | TotW       | –             | W        | Analog          |
+
+---
+
+## Average Data (`gold_<user>_avg_std`)
+
+For analog values, averages are computed over a fixed time interval (e.g., 5 minutes), configurable at the Nexalis Agent level.
+
+**Example:**
+
+| value  | min   | max   | count | qualitySource | dtConnector          | tsConnector   | protocol | triggerType |
+|--------|-------|-------|-------|---------------|----------------------|---------------|----------|-------------|
+| 0.98937| 0.98  | 0.99  | 12    | null          | 2025-06-24T20:00:00Z | 1750795200000 | OPC UA   | 5min-avg    |
+| 30.0   | 29.5  | 30.5  | 10    | null          | 2025-06-24T20:00:00Z | 1750795200000 | OPC UA   | 5min-avg    |
+| 30.0   | 29.7  | 30.2  | 11    | null          | 2025-06-24T20:00:00Z | 1750795200000 | OPC UA   | 5min-avg    |
+
+---
+
+## High Frequency Data (`gold_<user>_hf_std`)
+
+High-frequency (second-level) data is collected in near real time and includes discrete/boolean signals.
+
+**Example:**
+
+| value  | qualitySource | dtConnector              | tsConnector   | protocol | triggerType |
+|--------|---------------|--------------------------|---------------|----------|-------------|
+| 617.0  | null          | 2025-06-21T20:20:39.642Z | 1750537239642 | OPC UA   | changed     |
+| 9.0    | null          | 2025-06-21T20:20:39.642Z | 1750537239642 | OPC UA   | changed     |
+| 70000.0| null          | 2025-06-21T20:20:39.642Z | 1750537239642 | OPC UA   | changed     |
+
