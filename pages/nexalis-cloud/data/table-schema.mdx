@@ -1,11 +1,15 @@
-# Data Model
+---
+title: Table Schema
+sidebar_position: 3
+---
 
-The **Nexalis Data Model** provides a standardized structure for accessing and analyzing industrial data across different asset types.
-This model comes as a **template provided by Nexalis**, but it is **customizable by users** to adapt to specific requirements.
+---
+The **Nexalis Table Schema** defines how the data within the tables is structured into columns.
 
 ## Column Groups
 
-Most columns are shared across both tables, but there are some differences. **Presence** below is indicated neutrally as `both`, `avg_std`, or `hf_std`.
+Most columns are shared across both tables `avg_std` and `hf_std`, but there are some differences. 
+**Presence** below is indicated neutrally as `both`, `avg_std`, or `hf_std`.
 
 ### Device metadata
 - **siteName** — *Presence:* `both`; site where the device is located  
@@ -22,6 +26,9 @@ Most columns are shared across both tables, but there are some differences. **Pr
 - **subDataObject** — *Presence:* `both`; finer breakdown (e.g., phsA: phase A)
 - **engUnits** — *Presence:* `both`; standardized engineering units
 - **measurementType** — *Presence:* `both`; Analog type vs Discrete type
+
+> These fields reference the **Nexalis Ontology Data Model** which is an ontology that provides the standardized vocabulary for classification (asset types, logical nodes, data objects, etc.). It is **provided as a template and is customizable by users** to match their operational context. 
+It provides a standardized ontology data model for accessing and analyzing industrial data across different asset types.
 
 ### Data values
 - **dataPoint** — *Presence:* `both`; device‑specific identifier (e.g., Modbus register, OPC UA tag)  

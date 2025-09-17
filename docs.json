@@ -20,7 +20,7 @@
         "pages": [
           "pages/nexalis-cloud/introduction",
           "pages/nexalis-cloud/data/data-tables",
-          "pages/nexalis-cloud/data/data-model",
+          "pages/nexalis-cloud/data/table-schema",
           "pages/nexalis-cloud/data/data-table-examples",
           "pages/nexalis-cloud/delta-sharing/databricks-to-databricks",
           "pages/nexalis-cloud/delta-sharing/open-protocol",
