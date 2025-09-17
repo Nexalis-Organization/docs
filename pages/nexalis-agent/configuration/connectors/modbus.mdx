@@ -211,7 +211,7 @@ Each entry describes one Modbus register to read.
 
 ---
 
-## 3. Message format
+## 3. Message format sent to Nexalis Cloud
 
 ```json
 {
@@ -265,6 +265,7 @@ RTU:
 ```
 
 The connector forwards the gRPC messages to localhost on port 50051 by default. If there is a need to change this, you can do so when instantiating the connector in the command line with --grpcAddress my.grpc.server.com:55555.
+
 ---
 
 ## 5. Modbus data type
