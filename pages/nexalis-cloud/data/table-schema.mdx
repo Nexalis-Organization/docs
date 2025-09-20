@@ -9,46 +9,46 @@ The **Nexalis Table Schema** defines how the data within the tables is structure
 ## Column Groups
 
 Most columns are shared across both tables `avg_std` and `hf_std`, but there are some differences. 
-**Presence** below is indicated neutrally as `both`, `avg_std`, or `hf_std`.
+**Presence** below is indicated as `both`, `avg_std`, or `hf_std`.
 
 ### Device metadata
-- **siteName** — *Presence:* `both`; site where the device is located  
-- **deviceModel** — *Presence:* `both`; manufacturer and model  
-- **deviceID** — *Presence:* `both`; unique identifier of the device  
-- **subDeviceID** — *Presence:* `both`; distinguishes devices when connected via proxy/gateway  
-- **assetName** — *Presence:* `both`; concatenation of deviceID + subDeviceID  
-- **protocol** — *Presence:* `both`; communication protocol used  
+- **siteName** — `both`; site where the device is located  
+- **deviceModel** — `both`; manufacturer and model  
+- **deviceID** — `both`; unique identifier of the device  
+- **subDeviceID** — `both`; distinguishes devices when connected via proxy/gateway  
+- **assetName** — `both`; concatenation of deviceID + subDeviceID  
+- **protocol** — `both`; communication protocol used  
 
 ### Standardization fields
-- **assetType** — *Presence:* `both`; standardized device type (e.g., Solar inverter, Storage inverter, Meteo station, Meter, Wind turbine, etc.)
-- **logicalNode** — *Presence:* `both`; standardized function type (e.g., MMDC: DC Measurements)
-- **dataObject** — *Presence:* `both`; standardized tag (e.g., PhV: phase voltage)
-- **subDataObject** — *Presence:* `both`; finer breakdown (e.g., phsA: phase A)
-- **engUnits** — *Presence:* `both`; standardized engineering units
-- **measurementType** — *Presence:* `both`; Analog type vs Discrete type
+- **assetType** — `both`; standardized device type (e.g., Solar inverter, Storage inverter, Meteo station, Meter, Wind turbine, etc.)
+- **logicalNode** — `both`; standardized function type (e.g., MMDC: DC Measurements)
+- **dataObject** — `both`; standardized tag (e.g., PhV: phase voltage)
+- **subDataObject** — `both`; finer breakdown (e.g., phsA: phase A)
+- **engUnits** — `both`; standardized engineering units
+- **measurementType** — `both`; Analog type vs Discrete type
 
 > These fields reference the **Nexalis Ontology Data Model** which is an ontology that provides the standardized vocabulary for classification (asset types, logical nodes, data objects, etc.). It is **provided as a template and is customizable by users** to match their operational context. 
 It provides a standardized ontology data model for accessing and analyzing industrial data across different asset types.
 
 ### Data values
-- **dataPoint** — *Presence:* `both`; device‑specific identifier (e.g., Modbus register, OPC UA tag)  
-- **value** — *Presence:* `both`;  
+- **dataPoint** — `both`; device‑specific identifier (e.g., Modbus register, OPC UA tag)  
+- **value** — `both`;  
   - in `avg_std`: averaged value per interval  
   - in `hf_std`: raw high‑frequency reading  
-- **min, max, count** — *Presence:* `avg_std`; aggregated statistics for each X‑minute interval  
-- **description** — *Presence:* `both`; manufacturer‑provided description  
-- **qualitySource** — *Presence:* `both`; quality indicator  
-- **triggerType** — *Presence:* `both`; Nexalis Agent configuration for when to send data  
-- **metaData** — *Presence:* `both`; additional protocol parameters (settings, buffering info)  
+- **min, max, count** — `avg_std`; aggregated statistics for each X‑minute interval  
+- **description** — `both`; manufacturer‑provided description  
+- **qualitySource** — `both`; quality indicator  
+- **triggerType** — `both`; Nexalis Agent configuration for when to send data  
+- **metaData** — `both`; additional protocol parameters (settings, buffering info)  
 
 ### Timestamps
-- **tsConnector** — *Presence:* `both`; epoch (ms) when collected  
-- **dtConnector** — *Presence:* `both`; human‑readable equivalent  
-- **tsReception** — *Presence:* `both`; when sent to cloud  
-- **tsSource** — *Presence:* `both`; timestamp directly from device  
+- **tsConnector** — `both`; epoch (ms) when collected  
+- **dtConnector** — `both`; human‑readable equivalent  
+- **tsReception** — `both`; when sent to cloud  
+- **tsSource** — `both`; timestamp directly from device  
 
 ### Unique identifier
-- **uniqueTagID** — *Presence:* `both`; concatenation of key fields → globally unique datapoint ID  
+- **uniqueTagID** — `both`; concatenation of key fields → globally unique datapoint ID  
 
 ---
 
