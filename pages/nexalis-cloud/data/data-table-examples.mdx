@@ -30,6 +30,61 @@ Raw tags are mapped to the **Nexalis Reference Data Model**. This adds semantic 
 | TRK_88103/NCU_2/37| …/Tracker_Setpoint_37/Setpoint              | TRKMOT    | MainGAPC    | PosReq     | –             | –        | Analog          |
 | INV_11B131        | …/INV_11B131/TOTW                          | INV       | MMXU        | TotW       | –             | W        | Analog          |
 
+
+**Standardization — Ten practical examples**
+
+Raw tags are mapped to the **Nexalis Reference Data Model**. This adds semantic fields such as `assetType`, `logicalNode`, `dataObject`, `subDataObject`, `engUnits`, and `measurementType`.
+
+How to read this: 
+`assetType` = equipment class → `logicalNode` = tag group → `dataObject` (+ optional `subDataObject`) = the specific signal → `measurementType` = Analog/Discrete → `engUnits` = engineering units.
+
+Example:
+
+| subDeviceID            | dataPoint (raw tag, example)                          | assetType | logicalNode | dataObject   | subDataObject | engUnits | measurementType |
+|------------------------|--------------------------------------------------------|-----------|-------------|--------------|---------------|----------|-----------------|
+| INV_8896               | …/INV_8896/VPHSCA                                     | INV       | MMXU        | PPV          | phsCA         | V        | Analog          |
+| INV_11B131             | …/INV_11B131/TOTW                                     | INV       | MMXU        | TotW         | –             | kW       | Analog          |
+| TRK_88103/NCU_2/37     | …/Tracker_Setpoint_37/Setpoint                        | TRKMOT    | GAPC¹       | PosReq       | –             | °        | Analog          |
+| MTR_451                | …/MTR_451/DmdTotWh                                    | Meter     | MMXU        | DmdTotWh     | –             | kWh      | Analog          |
+| MS_01                  | …/MS_01/POAInsol                                      | MeteoSta  | MMET        | POAInsol     | –             | W/m2     | Analog          |
+| SITE/HV                | …/SITE/XCBR/HV/Pos                                    | SITE      | XCBR        | Pos          | HV            | –        | Discrete        |
+| STR_112/Bifacial       | …/STR_112/Amp/Bifacial                                | String    | MMDC        | Amp          | Bifacial      | A        | Analog          |
+| STO_02                 | …/STO_02/SocEffWhPct                                  | STO       | DSTO        | SocEffWhPct  | –             | %        | Analog          |
+| STO_INV_07             | …/STO_INV_07/DmdW                                     | STO_INV   | MMXU        | DmdW         | –             | kW       | Analog          |
+| INV_330                | …/INV_330/TotWRefPct                                  | INV       | DINV        | TotWRefPct   | –             | %        | Analog          |
+
+What each row means (using the model descriptions):
+
+1. **Inverter line-to-line voltage (C–A)** → `INV.MMXU.PPV.phsCA`  
+   *Three Phase Measurements → Phase-to-Phase Voltage → Phase C-A*, Analog in **V**.
+
+2. **Inverter total active power** → `INV.MMXU.TotW`  
+   *Three Phase Measurements → Active Power (P)*, Analog in **kW**.
+
+3. **Tracker setpoint position** → `TRKMOT.GAPC.PosReq`  
+   *Generic automatic process control → Motor setpoint position*, Analog in **°**.
+
+4. **Meter energy imported (from grid)** → `Meter.MMXU.DmdTotWh`  
+   *Three Phase Measurements → Energy absorbed from the grid*, Analog in **kWh**.
+
+5. **Plane-of-Array irradiance** → `MeteoSta.MMET.POAInsol`  
+   *Meteorological information → Plane of Array (POA) Irradiance*, Analog in **W/m2**.
+
+6. **HV breaker position at site** → `SITE.XCBR.Pos.HV`  
+   *Switching Circuit Breaker → Position status → High Voltage*, **Discrete** (open/closed).
+
+7. **String DC current (bifacial)** → `String.MMDC.Amp.Bifacial`  
+   *DC Electrical Measurements → DC Current → Bifacial*, Analog in **A**.
+
+8. **BESS effective state of charge (energy-based)** → `STO.DSTO.SocEffWhPct`  
+   *DER storage unit → Effective State of Charge based on available energy (Wh)*, Analog in **%**.
+
+9. **BESS inverter AC charging power** → `STO_INV.MMXU.DmdW`  
+   *Three Phase Measurements → AC Charging Power*, Analog in **kW**.
+
+10. **Inverter active-power reference (percent)** → `INV.DINV.TotWRefPct`  
+    *DER Inverter Model → Active Power Reference setpoint in percentage*, Analog in **%**.
+
 ---
 
 ## Average Data (`gold_<user>_avg_std`)
