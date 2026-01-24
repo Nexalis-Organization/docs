@@ -1,0 +1,144 @@
+# Common Errors
+
+This page lists the most frequent errors you may encounter when using the Nexalis Real-Time API and how to resolve them.
+
+---
+
+## Authentication Failed
+
+**Error:** `401 Unauthorized` or `Invalid token`
+
+**Cause:** Missing or incorrect READ token
+
+**Solution:** 
+- Verify your token is correct and included in the `X-Warp10-Token` header
+- Contact [contact@nexalis.io](mailto:contact@nexalis.io) if you need a new token
+- Ensure there are no extra spaces or characters in the token
+
+---
+
+## No Data Returned
+
+**Error:** Empty array `[]` returned
+
+**Cause:** No matching time-series found for your query criteria
+
+**Solution:** 
+- Verify label values (siteName, deviceID, dataPoint, etc.) are correct
+- Check that data exists for the specified time range
+- Use FIND to discover available metrics first before fetching
+- Confirm the device is actively sending data
+
+---
+
+## WarpScript Syntax Error
+
+**Error:** `WarpScript error` or parsing failure message
+
+**Cause:** Invalid WarpScript syntax in your query
+
+**Solution:**
+- Check for matching quotes (single quotes `'` for strings)
+- Verify proper spacing and structure in label maps
+- Ensure all braces `{}` and brackets `[]` are properly closed
+- Test your query in smaller parts to isolate the issue
+- Review the [WarpScript documentation](https://www.warp10.io/content/03_Documentation/04_WarpScript) for syntax rules
+
+**Example of correct syntax:**
+```warpscript
+{
+  'token' 'YOUR_READ_TOKEN'
+  'class' 'nx.value'
+  'labels' { 'siteName' 'site_A' }
+} FIND
+```
+
+---
+
+## Request Timeout
+
+**Error:** Request timeout or no response
+
+**Cause:** Query is too broad or time range too large
+
+**Solution:**
+- Reduce the time range (start with 24 hours or less)
+- Add more specific label filters to narrow results
+- Use Nexalis custom macros which are optimized for performance
+- Break large queries into smaller time windows
+- Consider using aggregated data instead of raw high-frequency data
+
+---
+
+## Macro Not Found
+
+**Error:** `Unknown symbol: @nexalis/<macro_name>`
+
+**Cause:** Macro name is incorrect or not available
+
+**Solution:**
+- Check the macro name spelling (case-sensitive)
+- Verify the macro exists in the [Warp10 Macros guide](./warp10-macros)
+- Contact support if you believe the macro should be available
+
+---
+
+## Invalid Time Format
+
+**Error:** `Invalid timestamp` or parsing error
+
+**Cause:** Incorrect timestamp format
+
+**Solution:**
+- Use ISO8601 format: `'2025-01-15T00:00:00Z'`
+- Or use microseconds as a LONG value (not a string)
+- Ensure end time is after start time
+- Check for timezone indicators (use `Z` for UTC)
+
+**Valid formats:**
+```warpscript
+// ISO8601 string
+'start' '2025-01-15T00:00:00Z'
+
+// Microseconds as LONG
+'start' NOW 24 h -
+'end' NOW
+```
+
+---
+
+## Empty Response with Status 200
+
+**Error:** Status 200 but empty or unexpected response
+
+**Cause:** Query executed successfully but returned no data or wrong data format
+
+**Solution:**
+- Use FIND first to confirm the time-series exists
+- Check if you're using the right GTS class (usually `nx.value`)
+- Verify your label filters match actual data labels
+- Review your macro parameters for correctness
+
+---
+
+## Rate Limiting
+
+**Error:** `429 Too Many Requests`
+
+**Cause:** Too many API requests in a short time period
+
+**Solution:**
+- Implement exponential backoff in your code
+- Reduce query frequency
+- Batch multiple metrics into single queries when possible
+- Contact support if you need higher rate limits
+
+---
+
+## Need More Help?
+
+If you encounter an error not listed here or need additional assistance:
+
+- Review the [Python examples](./python-examples) for proper integration patterns
+- Check the [PowerBI examples](./powerbi-examples) for common dashboard scenarios
+- Contact [contact@nexalis.io](mailto:contact@nexalis.io) for support

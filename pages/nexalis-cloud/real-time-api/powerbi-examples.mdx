@@ -2,7 +2,7 @@
 title: "Power BI Examples"
 ---
 
-Connect Power BI to Nexalis Cloud's real-time API to query metadata and create interactive dashboards. This guide shows the recommended approach using Power BI's Web connector with parameters.
+Connect Power BI to Nexalis Cloud's real-time API to query the tags list and create interactive dashboards. This guide shows the recommended approach using Power BI's Web connector with parameters.
 
 ---
 
@@ -30,7 +30,7 @@ This method retrieves all available data points from your Nexalis Cloud instance
 - Type: Text
 - Current Value: `YOUR_READ_TOKEN`
 
-### Step 3: Create the Metadata Query
+### Step 3: Create the Tags List Query
 
 1. Create a new blank query
 2. Go to **Home** → **Advanced Editor**
@@ -140,7 +140,7 @@ in
 
 ### Step 5: Create the connection
 
-1. Click **Invoke**, which will take you to the warning message "Please specify how to connect".
+1. Click **Invoke**, which will prompt the warning message "Please specify how to connect".
 2. Click **Edit Credentials**
 3. In the "Anonymous" connection method, scroll through the urls list to select "https://yourcompany.app.nexalis.io/api/v0/find"
 4. Then click **Connect**
@@ -149,7 +149,7 @@ A table with all your tags should now appear in Power BI.
 
 ### Step 4: Load the Data
 
-Click **Close & Apply** to load the metadata table into Power BI.
+Click **Close & Apply** to load the tags list table into Power BI.
 
 ---
 
@@ -181,36 +181,17 @@ Your NexalisTagsList table contains all available tags with their properties:
 
 ## Benefits of This Approach
 
-1. **Start with Metadata First**: It's more efficient to query and explore the list of available tags before fetching tags with their values. The metadata query is lightweight and fast, while fetching actual time-series values transfers much more data and takes significantly longer.
+1. **Start with Tags List First**: It's more efficient to query and explore the list of available tags (*FIND*) before fetching tags with their values (*FETCH*). *FIND* queries are lightweight and fast, while *FETCH* returns actual time-series values which can take significantly longer if you're fetching a large time window.
 
 2. **Parameter-Based Configuration**: Parametrizing the URL and token allows you to:
    - **Reuse across functions**: Reference the same parameters in multiple queries without duplicating configuration
    - **Share safely**: Share Power BI functions with colleagues without exposing your personal READ token
-   - **Switch environments easily**: Change between dev, staging, and production by updating parameters once
-
-3. **Complete Metadata**: Get all labels and attributes in one query, including descriptions, units, multipliers, and adders
-
-4. **Scalable**: Works for any number of sites and devices without modifying the query
-
-5. **Self-Documenting**: Includes descriptions and engineering units for each data point
-
-
 ---
 
-## Next Steps
-
-Once you have the metadata table loaded:
-
-1. **Create relationships** with other tables in your data model
-2. **Build visualizations** using the metadata to label and filter data
-3. **Add time-series queries** to fetch actual values (see advanced examples below)
-4. **Schedule refresh** to keep metadata up to date
-
----
 
 ## Advanced: Fetching Time-Series Data
 
-To fetch actual time-series values, create another query using the `/exec` endpoint with WarpScript:
+To fetch actual time-series values, go back to your report, open a new query, and paste the following in the query editor:
 
 ```m
 let
