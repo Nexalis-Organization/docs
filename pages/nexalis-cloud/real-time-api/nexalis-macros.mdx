@@ -1,0 +1,161 @@
+---
+title: "Nexalis Macros"
+---
+
+# Nexalis Macros
+
+Nexalis Cloud provides custom WarpScript macros for advanced time-series data processing. These macros simplify complex operations and ensure accurate calculations.
+
+---
+
+## @nexalis/fetch_trapezoidal_averages
+
+Fetches time-series data from Warp10 and computes time-weighted (trapezoidal) averages over fixed-width time buckets. This is ideal for accurate aggregation of non-uniformly sampled data.
+
+### Why Trapezoidal Averages?
+
+Unlike simple arithmetic means, trapezoidal averaging accounts for the time duration between data points, providing more accurate averages when:
+- Data points are irregularly spaced
+- Sampling rates vary over time
+- You need true time-weighted calculations
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `read_token` | STRING | Warp10 read token with fetch permissions |
+| `ti` | STRING or LONG | Start timestamp (ISO8601 string or microseconds) |
+| `tf` | STRING or LONG | End timestamp (ISO8601 string or microseconds) |
+| `bucket_size` | LONG | Bucket width in microseconds |
+| `class` | STRING | GTS class name to fetch (e.g., 'nx.value') |
+| `labels` | MAP | Labels **and attributes** to filter GTS (supports regexp with `~` prefix) |
+
+### Returns
+
+A list of GTS containing time-weighted averages for each bucket. Only LONG and DOUBLE value types are processed; discrete measurements are automatically filtered out.
+
+### Example Usage
+
+```warpscript
+// Fetch 5-minute trapezoidal averages for 2 hours
+$RT                           // Read token
+'2025-12-19T10:00:00Z'       // Start time
+'2025-12-19T12:00:00Z'       // End time
+300000000                     // 5 minutes in microseconds
+'nx.value'                    // Class name
+{ 
+  'assetType' 'INV'
+  'dataObject' 'TotW'
+}
+@nexalis/fetch_trapezoidal_averages
+```
+
+### Example with Regexp
+
+```warpscript
+// Fetch dataPoints containing "INV" or "METER"
+$RT
+'2025-12-19T10:00:00Z'
+'2025-12-19T12:00:00Z'
+300000000
+'nx.value'
+{ 
+  'dataPoint' '~(.*INV.*|.*METER.*)'  // Regexp pattern
+}
+@nexalis/fetch_trapezoidal_averages
+```
+
+### How It Works
+
+1. **Fetch**: Retrieves GTS data with boundary points (1 pre and post) for accurate edge calculations
+2. **Filter**: Keeps only analog measurements (gets rid of strings/booleans)
+3. **Average**: Applies trapezoidal averaging to compute time-weighted means per bucket
+
+---
+
+## @nexalis/scale
+
+Applies scaling transformations to GTS values using `multiplier` and `adder` attributes. This is useful for unit conversions, calibration adjustments, or normalization.
+
+
+### Use Cases
+
+The primary purpose of `@nexalis/scale` is to transform raw SCADA values into standardized units defined by the Nexalis data model. Values are stored "raw" (as sent from the site SCADA), and the `multiplier` and `adder` attributes bring them into the correct units.
+
+**Example**: A site sends active power measurements in Watts (W), but the Nexalis data model specifies kilowatts (kW). The GTS would have:
+- `multiplier: 0.001` (converts W → kW)
+- `adder: 0`
+
+When you fetch this data and apply `@nexalis/scale`, a raw value of 5000 W becomes 5 kW.
+
+### Common Transformations
+
+1. **Power Units**: W → kW (`multiplier: 0.001`, `adder: 0`)
+2. **Temperature Scales**: Celsius → Fahrenheit (`multiplier: 1.8`, `adder: 32`)
+3. **Sensor Offsets**: Apply zero-point corrections using `adder`
+
+
+### Attributes Used
+
+The macro reads these attributes from each GTS:
+- **multiplier**: Multiplies each value (e.g., for unit conversion)
+- **adder**: Adds to each value (e.g., for offset correction)
+
+If one of 'multiplier' or 'adder' is missing or null, that transformation is skipped.
+
+### Formula
+
+For each data point:
+```
+scaled_value = original_value × multiplier + adder
+```
+
+
+### Parameters
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `DATA` | LIST&lt;GTS&gt; | List of GTS to apply scaling transformations |
+
+
+### Returns
+
+A list of GTS with scaled values. The original `multiplier` and `adder` attributes remain in the GTS metadata.
+
+
+### Example: Power Standardization
+
+```warpscript
+// Fetch raw active power data (stored in Watts from SCADA)
+{
+  'token' $RT 
+  'class' "nx.value"
+  'labels' { 'assetType' 'INV' 'dataObject' 'TotW' }
+  'start' "2025-12-15T00:00:00Z"
+  'end' "2025-12-15T23:59:59Z" 
+} FETCH
+
+// Apply scaling to convert W → kW per Nexalis data model
+// GTS has attributes: multiplier=0.001, adder=0
+@nexalis/scale
+```
+
+---
+
+## Chaining Macros
+
+These macros can be combined for complex data processing workflows:
+
+```warpscript
+// Fetch trapezoidal averages, then apply scaling
+$RT
+'2025-12-19T10:00:00Z'
+'2025-12-19T12:00:00Z'
+300000000
+'nx.value'
+{ 'siteName' 'site_A' 'dataPoint' 'PowerKW' }
+@nexalis/fetch_trapezoidal_averages
+
+// Convert kW to MW (assuming multiplier=0.001 is set in attributes)
+@nexalis/scale
+```

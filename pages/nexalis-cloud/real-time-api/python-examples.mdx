@@ -1,0 +1,139 @@
+---
+title: "Python Examples"
+---
+
+# Python Examples
+
+Learn how to query Nexalis Cloud's real-time API using Python to fetch time-series data and integrate it into your data pipelines.
+
+---
+
+## Basic Query - Fetch scaled data into a JSON
+
+```python
+import requests
+
+# Configuration
+WARP10_URL = "https://yourcompany.app.nexalis.io/api/v0/exec"
+READ_TOKEN = "YOUR_READ_TOKEN"
+
+# WarpScript query
+warpscript = f"""
+{{
+  'token' {READ_TOKEN}
+  'class' 'nx.value'
+  'labels' {{ 'assetType' 'INV' 'dataObject' 'TotW' }}
+  'start' '2026-01-15T00:00:00Z'
+  'end' '2026-01-15T01:00:00Z'
+}} FETCH
+@nexalis/scale
+"""
+
+# Execute query
+response = requests.post(
+    WARP10_URL,
+    headers={
+        'X-Warp10-Token': READ_TOKEN,
+        'Content-Type': 'text/plain; charset=UTF-8'
+    },
+    data=warpscript
+)
+
+# Get JSON response
+data = response.json()
+print(data)
+```
+
+> ⚠️ **Warning:** This will print all the data directly in your terminal.
+
+The response is a JSON array containing GTS (Geo Time Series) objects with labels, attributes, and time-value pairs.
+
+
+---
+
+## Convert to Pandas DataFrame and Save as Delta Table
+
+Once you have the JSON response, you can convert it to a pandas DataFrame and save it as a Delta Lake table:
+
+```python
+import requests
+import pandas as pd
+from deltalake import write_deltalake
+
+# Configuration
+WARP10_URL = "https://yourcompany.app.nexalis.io/api/v0/exec""
+READ_TOKEN = "YOUR_READ_TOKEN"
+
+# WarpScript query
+warpscript = f"""
+{{
+  'token' '{READ_TOKEN}'
+  'class' 'nx.value'
+  'labels' {{ 'assetType' 'INV' 'dataObject' 'TotW' }}
+  'start' '2026-01-15T00:00:00Z'
+  'end' '2026-01-15T01:00:00Z'
+}} FETCH
+@nexalis/scale
+"""
+
+# Execute query and get JSON
+response = requests.post(
+    WARP10_URL,
+    headers={
+        'X-Warp10-Token': READ_TOKEN,
+        'Content-Type': 'text/plain; charset=UTF-8'
+    },
+    data=warpscript
+)
+
+gts_list = response.json()[0]
+
+# Convert to DataFrame
+rows = []
+for gts in gts_list:
+    labels = gts.get('l', {})
+    attributes = gts.get('a', {})
+    values = gts.get('v', [])
+    
+    for v in values:
+        timestamp_us = v[0]
+        value = v[-1]
+        
+        rows.append({
+            'siteName': labels.get('siteName', ''),
+            'deviceModel': labels.get('deviceModel', ''),
+            'deviceID': labels.get('deviceID', ''),
+            'dataPoint': labels.get('dataPoint', ''),
+            'description': attributes.get('description', ''),
+            'timestamp': pd.to_datetime(timestamp_us, unit='us', utc=True),
+            'value': value,
+            'engUnits': attributes.get('engUnits', ''),
+            'subDeviceID': attributes.get('subDeviceID', ''),
+            'assetType': labels.get('assetType', ''),
+            'logicalNode': attributes.get('logicalNode', ''),
+            'dataObject': labels.get('dataObject', ''),
+            'subDataObject': attributes.get('subDataObject', ''),
+            'measurementType': attributes.get('measurementType', ''),
+            'multiplier': attributes.get('multiplier', ''),
+            'adder': attributes.get('adder', ''),
+            'protocol': attributes.get('protocol', ''),
+            'nx-agent-id': attributes.get('nx-agent-id', ''),
+        })
+
+df = pd.DataFrame(rows)
+print(df.head())
+
+# Save as Delta table
+write_deltalake('./tmp/nexalis_data', df, mode='append')
+print("Data saved to Delta table!")
+```
+
+This approach parses the GTS format into a flat DataFrame structure, making it easy to analyze with pandas or save to Delta Lake for further processing.
+
+---
+
+## Next Steps
+
+- Learn about [Nexalis Macros](./nexalis-macros) for simplified queries
+- Explore [PowerBI integration](./powerbi-examples) for dashboards
+- Review the [API documentation](./real-time-api) for more details
