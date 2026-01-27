@@ -2,7 +2,7 @@
 title: "Power BI Examples"
 ---
 
-Connect Power BI to Nexalis Cloud's real-time API to query the tags list and create interactive dashboards. This guide shows the recommended approach using Power BI's Web connector with parameters.
+Connect Power BI to Nexalis Cloud's real-time API to query your tags list and create interactive dashboards. This guide shows the recommended approach using Power BI's Web connector with parameters.
 
 ---
 
@@ -194,234 +194,133 @@ Your NexalisTagsList table contains all available tags with their properties:
 To fetch actual time-series values, go back to your report, open a new query, and paste the following in the query editor:
 
 ```m
+(token as text, start as any, end as any, span as any, labels as text) as table =>
 let
-    Url = NexalisApiBaseUrl & "/exec",
-    Token = NexalisApiReadToken,
-    
-    WarpScript = "{
-  'token' '" & Token & "'
-  'class' 'nx.value'
-  'labels' { 'assetType' 'INV' 'dataObject' 'TotW' }
-  'start' '2026-01-15T00:00:00Z'
-  'end' '2026-01-15T01:00:00Z'
-} FETCH
-@nexalis/scale",
-    
-    Raw = Web.Contents(
-        Url,
+    // BaseUrl param is expected to end with /v0 (e.g. https://host/api/v0)
+    ExecUrl = NexalisApiBaseUrl & "/exec",
+
+    // Helpers
+    EscapeWarpString = (s as text) as text =>
+        // minimal escaping for single quotes in WarpScript strings
+        Text.Replace(s, "'", "\\'"),
+
+    // Build the WarpScript body (one item per line, then the macro call)
+    BodyText = Text.Combine(
+        {
+            "'" & EscapeWarpString(token) & "'",   // <token> as a WarpScript string
+            start,                      // <start> (microseconds as text)
+            end,                        // <end> (microseconds as text)
+            span,                       // <span> (microseconds as text)
+            "'nx.value'",               // <class> as a WarpScript string
+            labels,                     // <labels> (WarpScript literal, e.g. {} or { 'k' 'v' })
+            "@nexalis/fetch_trapezoidal_averages"
+        },
+        "#(lf)"
+    ),
+
+    RawBin = Web.Contents(
+        ExecUrl,
         [
             Headers = [
-                #"X-Warp10-Token" = Token,
-                #"Content-Type" = "text/plain; charset=UTF-8"
+                #"Content-Type" = "text/plain; charset=utf-8",
+                Accept = "application/json"
             ],
-            Content = Text.ToBinary(WarpScript)
+            Content = Text.ToBinary(BodyText)
         ]
     ),
-    
-    // Parse JSON and transform to table
-    // (transformation steps omitted for brevity)
-in
-    Raw
-```
 
----
+    Raw = Json.Document(RawBin),
 
-## Troubleshooting
+    // Warp10 output shapes we expect: [[]] or [[{...}]] or [[{...},{...},...]]
+    Inner = if List.Count(Raw) = 0 then {} else Raw{0},
+    GTSList = if Inner = null or (Type.Is(Value.Type(Inner), List.Type) = false) then {} else Inner,
 
-### "Unable to connect" Error
+    Rows =
+        List.Combine(
+            List.Transform(GTSList, each
+                let
+                    g    = _,
+                    labs = try g[l] otherwise [],
+                    atts = try g[a] otherwise [],
+                    vals = try g[v] otherwise {}
+                in
+                    List.Transform(vals, (row) =>
+                        let
+                            ts_us = Number.From(row{0}),
+                            dtConnector =
+                                DateTimeZone.From(
+                                    #datetimezone(1970,1,1,0,0,0,0,0)
+                                    + #duration(0,0,0, ts_us / 1000000.0)
+                                ),
+                            value = row{ List.Count(row) - 1 },
 
-- Verify `NexalisApiBaseUrl` is correct (no trailing slash)
-- Check that `NexalisApiReadToken` is valid
-- Ensure firewall allows HTTPS connections to Nexalis
+                            rec = [
+                                dtConnector      = dtConnector,
+                                siteName         = try Record.Field(labs, "siteName")    otherwise null,
+                                deviceModel      = try Record.Field(labs, "deviceModel") otherwise null,
+                                deviceID         = try Record.Field(labs, "deviceID")    otherwise null,
+                                dataPoint        = try Record.Field(labs, "dataPoint")   otherwise null,
+                                value            = value,
+                                description      = try Record.Field(atts, "description") otherwise null,
+                                dataObject       = try Record.Field(atts, "dataObject")       otherwise null,
+                                subDataObject    = try Record.Field(atts, "subDataObject")    otherwise null,
+                                protocol         = try Record.Field(atts, "protocol")         otherwise null,
+                                multiplier       = try Record.Field(atts, "multiplier")       otherwise null,
+                                logicalNode      = try Record.Field(atts, "logicalNode")      otherwise null,
+                                measurementType  = try Record.Field(atts, "measurementType")  otherwise null,
+                                engUnits         = try Record.Field(atts, "engUnits")         otherwise null,
+                                adder            = try Record.Field(atts, "adder")            otherwise null,
+                                #"nx-agent-id"   = try Record.Field(atts, "nx-agent-id")      otherwise null,
+                                assetType        = try Record.Field(atts, "assetType")        otherwise null,
+                                subDeviceID      = try Record.Field(atts, "subDeviceID")      otherwise null
+                            ]
+                        in
+                            rec
+                    )
+            )
+        ),
 
-### Empty Results
+    TableOut =
+        if List.Count(Rows) = 0
+        then
+            #table(
+                {
+                    "dtConnector","siteName","deviceModel","deviceID","dataPoint","description","value",
+                    "dataObject","subDataObject","protocol","multiplier","logicalNode","measurementType",
+                    "engUnits","adder","nx-agent-id","assetType","subDeviceID"
+                },
+                {}
+            )
+        else
+            Table.FromRecords(Rows),
 
-- Verify the selector matches your data: `nx.value{.app=nexalis}`
-- Check that you have data in your Nexalis Cloud instance
-- Contact [contact@nexalis.io](mailto:contact@nexalis.io) for support
-
-### Authentication Failed
-
-- Ensure READ token hasn't expired
-- Check for extra spaces in the token parameter
-- Request a new token if needed
-
----
-
-## Next Steps
-
-- Learn about [Nexalis Macros](./nexalis-macros) for data queries
-- Integrate with [Python](./python-examples) for data pipelines
-- Review the [Real-Time API](./real-time-api) documentation
-            'DeviceID': labels.get('deviceID'),
-            'DataPoint': labels.get('dataPoint')
-        })
-
-df = pd.DataFrame(records)
-```
-
-3. Power BI will automatically detect the `df` DataFrame
-4. Click **OK** to load the data
-
----
-
-## Aggregated Data Query
-
-Query pre-aggregated data for better performance:
-
-```m
-let
-    // Query with hourly aggregation
-    WarpScript = "'site_A' 'INV_8896' 'TOTW' 7 d @nexalis/fetch [ SWAP bucketizer.mean 0 1 h 0 ] BUCKETIZE",
-    
-    Source = Web.Contents(
-        "https://yourcompany.app.nexalis.io/api/v0/exec",
-        [
-            Headers = [
-                #"X-Warp10-Token" = "YOUR_READ_TOKEN",
-                #"Content-Type" = "text/plain; charset=UTF-8"
-            ],
-            Content = Text.ToBinary(WarpScript)
-        ]
-    ),
-    
-    // Transform as before...
-```
-
----
-
-## Multi-Site Dashboard
-
-Create a multi-site comparison dashboard:
-
-### Power Query for Multiple Sites
-
-```m
-let
-    Sites = {"site_A", "site_B", "site_C"},
-    
-    GetSiteData = (siteName as text) =>
-        let
-            WarpScript = "'" & siteName & "' 'INV_*' 'TOTW' 24 h @nexalis/fetch",
-            Source = Web.Contents(
-                "https://yourcompany.app.nexalis.io/api/v0/exec",
-                [
-                    Headers = [
-                        #"X-Warp10-Token" = "YOUR_READ_TOKEN",
-                        #"Content-Type" = "text/plain; charset=UTF-8"
-                    ],
-                    Content = Text.ToBinary(WarpScript)
-                ]
-            ),
-            JsonResponse = Json.Document(Source)
-            // Transform...
-        in
-            JsonResponse,
-    
-    // Fetch data for all sites
-    AllSites = List.Transform(Sites, each GetSiteData(_)),
-    Combined = Table.Combine(AllSites)
-in
-    Combined
-```
-
----
-
-## Refresh Configuration
-
-### Automatic Refresh
-
-1. Go to **File** → **Options and settings** → **Data source settings**
-2. Select your Warp10 API connection
-3. Configure authentication (use API Key method with your token)
-
-### Schedule Refresh (Power BI Service)
-
-1. Publish your report to Power BI Service
-2. Go to the dataset settings
-3. Configure scheduled refresh (up to 8 times per day on Pro, 48 times on Premium)
-
-**Note:** For real-time streaming, consider using Power BI's streaming datasets with a custom connector or Azure Functions.
-
----
-
-## Best Practices
-
-### Performance Optimization
-
-1. **Use aggregated queries:** Request hourly or daily aggregations instead of raw second-level data
-2. **Limit time ranges:** Fetch only the data you need (e.g., last 7 days instead of all historical data)
-3. **Enable query folding:** Use native Power BI transformations when possible
-4. **Cache intermediate results:** Store processed data in staging tables
-
-### Security
-
-1. **Don't hardcode tokens:** Use Power BI parameters or Azure Key Vault
-2. **Use row-level security:** Restrict data access by site or region
-3. **Enable HTTPS only:** Ensure all API calls use secure connections
-
-### Example: Using Parameters for Token
-
-```m
-let
-    ReadToken = Parameter_ReadToken,  // Reference parameter instead of hardcoded token
-    
-    Source = Web.Contents(
-        "https://yourcompany.app.nexalis.io/api/v0/exec",
-        [
-            Headers = [
-                #"X-Warp10-Token" = ReadToken,
-                #"Content-Type" = "text/plain; charset=UTF-8"
-            ],
-            Content = Text.ToBinary("'site_A' 'INV_8896' 'TOTW' 24 h @nexalis/fetch")
-        ]
+    Typed = Table.TransformColumnTypes(
+        TableOut,
+        {
+            {"dtConnector", type datetimezone},
+            {"siteName", type text},
+            {"deviceModel", type text},
+            {"deviceID", type text},
+            {"dataPoint", type text},
+            {"description", type text},
+            {"value", type number},
+            {"dataObject", type text},
+            {"subDataObject", type text},
+            {"protocol", type text},
+            {"multiplier", type number},
+            {"logicalNode", type text},
+            {"measurementType", type text},
+            {"engUnits", type text},
+            {"adder", type number},
+            {"nx-agent-id", type text},
+            {"assetType", type text},
+            {"subDeviceID", type text}
+        }
     )
 in
-    Source
+    Typed
 ```
 
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Error: "Unable to connect"**
-- Verify the API endpoint URL is correct
-- Check that your token is active
-- Ensure firewall allows outbound HTTPS connections
-
-**Error: "Expression.Error: Invalid JSON"**
-- The WarpScript query may have syntax errors
-- Test the query directly using cURL before using in Power BI
-
-**Slow refresh times**
-- Reduce the time range in your queries
-- Use aggregated data instead of raw data
-- Consider incremental refresh for large datasets
-
-### Testing Queries
-
-Before adding to Power BI, test queries using cURL:
-
-```bash
-curl -X POST 'https://yourcompany.app.nexalis.io/api/v0/exec' \
-  -H 'X-Warp10-Token: YOUR_READ_TOKEN' \
-  -H 'Content-Type: text/plain; charset=UTF-8' \
-  -d "'site_A' 'INV_8896' 'TOTW' 24 h @nexalis/fetch"
-```
-
----
-
-## Example Dashboard
-
-Create a complete solar monitoring dashboard:
-
-1. **Power Generation Line Chart:** Show real-time power output
-2. **Site Comparison Bar Chart:** Compare total energy across sites
-3. **KPI Cards:** Display current power, today's energy, uptime %
-4. **Heatmap:** Visualize performance by hour and day
-5. **Filters:** Add slicers for site, date range, and device type
 
 ---
 

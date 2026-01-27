@@ -36,9 +36,7 @@
                   "pages/nexalis-cloud/real-time-api/real-time-api",
                   "pages/nexalis-cloud/real-time-api/nexalis-macros",
                   "pages/nexalis-cloud/real-time-api/python-examples",
-                  "pages/nexalis-cloud/real-time-api/powerbi-examples",
-                  "pages/nexalis-cloud/real-time-api/warpstudio-in-vscode",
-                  "pages/nexalis-cloud/real-time-api/common-errors"
+                  "pages/nexalis-cloud/real-time-api/powerbi-examples"
                 ]
               },
               {

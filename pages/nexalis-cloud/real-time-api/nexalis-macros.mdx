@@ -24,8 +24,8 @@ Unlike simple arithmetic means, trapezoidal averaging accounts for the time dura
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `read_token` | STRING | Warp10 read token with fetch permissions |
-| `ti` | STRING or LONG | Start timestamp (ISO8601 string or microseconds) |
-| `tf` | STRING or LONG | End timestamp (ISO8601 string or microseconds) |
+| `start` | STRING or LONG | Start timestamp (ISO8601 string or microseconds) |
+| `end` | STRING or LONG | End timestamp (ISO8601 string or microseconds) |
 | `bucket_size` | LONG | Bucket width in microseconds |
 | `class` | STRING | GTS class name to fetch (e.g., 'nx.value') |
 | `labels` | MAP | Labels **and attributes** to filter GTS (supports regexp with `~` prefix) |
@@ -137,25 +137,5 @@ A list of GTS with scaled values. The original `multiplier` and `adder` attribut
 
 // Apply scaling to convert W → kW per Nexalis data model
 // GTS has attributes: multiplier=0.001, adder=0
-@nexalis/scale
-```
-
----
-
-## Chaining Macros
-
-These macros can be combined for complex data processing workflows:
-
-```warpscript
-// Fetch trapezoidal averages, then apply scaling
-$RT
-'2025-12-19T10:00:00Z'
-'2025-12-19T12:00:00Z'
-300000000
-'nx.value'
-{ 'siteName' 'site_A' 'dataPoint' 'PowerKW' }
-@nexalis/fetch_trapezoidal_averages
-
-// Convert kW to MW (assuming multiplier=0.001 is set in attributes)
 @nexalis/scale
 ```
