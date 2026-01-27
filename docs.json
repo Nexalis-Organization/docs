@@ -20,14 +20,6 @@
         "pages": [
           "pages/nexalis-cloud/introduction",
           {
-            "group": "Data Structure",
-            "pages": [
-              "pages/nexalis-cloud/data/data-tables",
-              "pages/nexalis-cloud/data/table-schema",
-              "pages/nexalis-cloud/data/data-table-examples"
-            ]
-          },
-          {
             "group": "Data Sharing",
             "pages": [
               {
@@ -42,9 +34,16 @@
               {
                 "group": "Lakehouse Sharing",
                 "pages": [
-                  "pages/nexalis-cloud/delta-sharing/databricks-to-databricks",
-                  "pages/nexalis-cloud/delta-sharing/fabric-to-fabric",
-                  "pages/nexalis-cloud/delta-sharing/open-protocol"
+                  {
+                  "group": "Data Structure",
+                    "pages": [
+                      "pages/nexalis-cloud/data/data-tables",
+                      "pages/nexalis-cloud/data/table-schema",
+                      "pages/nexalis-cloud/data/data-table-examples"
+                    ]
+                  },
+                  "pages/nexalis-cloud/lakehouse-data-sharing/databricks-to-databricks",
+                  "pages/nexalis-cloud/lakehouse-data-sharing/fabric-to-fabric"
                 ]
               }
             ]

@@ -1,6 +1,6 @@
 # Nexalis Cloud
 
-Welcome to **Nexalis Cloud** documentation. This guide explains how to access and consume industrial data from the Nexalis platform. Whether you're a data engineer building pipelines, an analyst creating dashboards, or a developer integrating real-time data into applications, Nexalis Cloud provides flexible access patterns to fit your workflow.
+Welcome to **Nexalis Cloud** documentation. This guide explains how to access and consume industrial data from the Nexalis Platform. Whether you're a data engineer building pipelines, an analyst creating dashboards, or a developer integrating real-time data into applications, Nexalis Cloud provides flexible access patterns to fit your workflow.
 
 ---
 
@@ -10,14 +10,14 @@ Nexalis Cloud offers two complementary data access methods, each optimized for d
 
 ### 1. Real-Time API
 
-A high-performance **HTTP API** for querying time-series data in real time. Powered by [Warp10](https://www.warp10.io/), this API is designed for:
+A high-performance **HTTP API** for querying time-series data in real time. This API is designed for:
 
 - **Real-time applications** requiring sub-second response times
-- **Custom time-range queries** with advanced filtering and aggregations
-- **Edge analytics** and operational dashboards
+- **Custom calculation** with advanced time-series functions (see https://www.warp10.io/doc/reference)
+- **Analytics** and operational dashboards
 - **Event-driven architectures** and alerting systems
 
-Perfect for applications that need the latest sensor readings or want to query historical data with precise time windows.
+Perfect for applications that need the latest sensor readings or want to query historical data with custom needs.
 
 [Learn more about the Real-Time API →](./real-time-api)
 
@@ -25,7 +25,7 @@ Perfect for applications that need the latest sensor readings or want to query h
 
 ### 2. Lakehouse Sharing
 
-**Read-only access to your data** through native lakehouse sharing protocols. Nexalis deploys your data on the lakehouse platform and cloud region that matches your infrastructure — whether that's **Databricks**, **Snowflake**, or **Microsoft Fabric** on **AWS**, **Azure**, or **GCP**. You connect using native shortcuts from your own lakehouse platform:
+**Read-only access to your data** through native lakehouse sharing protocols. Nexalis deploys your data on the lakehouse platform and cloud region that matches your infrastructure — whether that's **Databricks**, **Snowflake**, or **Microsoft Fabric** on **AWS**, **Azure**, or **GCP**. You connect using native data sharing from your preferred lakehouse platform:
 
 #### Three Native Connection Options
 
@@ -33,36 +33,20 @@ Perfect for applications that need the latest sensor readings or want to query h
 - **Fabric-to-Fabric** — OneLake shortcuts and external data shares
 - **Snowflake-to-Snowflake** — Native data sharing with secure views
 
-Nexalis matches your specific combination of cloud provider, lakehouse platform, and region to ensure seamless, cost-effective data sharing with zero egress fees when in the same region.
+Nexalis matches your specific combination of cloud provider, lakehouse platform, and region to ensure seamless, cost-effective data sharing with zero egress fees.
 
 #### Benefits
 
 - **Zero data replication** — Data stays in Nexalis lakehouse, you query it directly
 - **Native integration** — Works seamlessly with your existing lakehouse platform
 - **Optimized deployment** — Data hosted in the same cloud provider and region as your infrastructure
-- **Cost efficiency** — Minimized or zero cloud egress fees, pay only for your own platform usage
+- **Cost efficiency** — Zero cloud egress fees, pay only for your own lakehouse service usage
 - **Read-only security** — Your access is secure and restricted to approved tables
+- **Always up-to-date & maintained** — Nexalis continuously refreshes and maintains the shared tables (corrections, schema evolution), so consumers always query trusted data.
 
-[Learn more about Databricks integration →](./delta-sharing/databricks-to-databricks)  
-[Learn more about Fabric integration →](./delta-sharing/fabric-to-fabric)  
-[Learn more about Snowflake integration →](./delta-sharing/open-protocol)
-
----
-
-## Data Access Architecture
-
-{/* Diagram */}
-<img src="/images/nexalis-databricks-diagram.png" alt="Nexalis Cloud data access architecture" style={{ maxWidth: "100%" }} />
-
-Nexalis Cloud follows a **medallion architecture**:
-
-1. **Bronze Layer** — Raw sensor data ingested from Nexalis Agents
-2. **Silver Layer** — Cleansed and standardized time-series data
-3. **Gold Layer** — Aggregated, enriched, and ready-to-analyze datasets
-
-You receive access to the **Gold Layer** tables:
-- `gold_<client>_hf_std` — High-frequency standardized data (raw sensor readings)
-- `gold_<client>_avg_std` — Time-averaged data with statistics (mean, std dev, min, max)
+[Learn more about Databricks integration →](./lakehouse-data-sharing/databricks-to-databricks)  
+[Learn more about Fabric integration →](./lakehouse-data-sharing/fabric-to-fabric)  
+**Snowflake-to-Snowflake** documentation is coming soon. In the meantime, please consult: https://docs.snowflake.com/en/user-guide/data-sharing-intro
 
 ---
 
@@ -75,39 +59,39 @@ You receive access to the **Gold Layer** tables:
 
 ### When to Use Real-Time API
 
+✅ Historical data access  
 ✅ Building real-time monitoring dashboards  
 ✅ Need the absolute latest sensor readings  
-✅ Custom time-window queries (e.g., "last 15 minutes")  
-✅ Integration with alerting/notification systems  
-✅ Low-latency edge analytics  
+✅ Custom time-series calculations (e.g., "5-minute averages")  
+✅ Integration with alerting, notification and work order management systems  
+✅ Low-latency analytics  
 
 ### When to Use Lakehouse Sharing
 
 ✅ Running SQL analytics and BI queries  
-✅ Training machine learning models  
+✅ Training machine learning / AI models  
 ✅ Building batch data pipelines  
 ✅ Creating historical trend analysis  
 ✅ Already using Databricks, Fabric, or Snowflake  
 ✅ Need native lakehouse integration with zero data replication  
 
-**Pro Tip:** Many customers use both! The Real-Time API powers operational dashboards while lakehouse sharing feeds analytical workloads and ML pipelines.
+**Pro Tip:** Many users use both! The Real-Time API powers operational dashboards while lakehouse sharing feeds analytical workloads and ML pipelines.
 
 ---
 
 ## Getting Started
 
-### Step 1: Understand Your Data Structure
+### Step 1: Choose Your Access Method(s)
 
-Review the [Data Tables documentation](./data/data-tables) to understand the schema and structure of your gold-layer tables.
-
-### Step 2: Choose Your Access Method
-
-- For real-time queries → [Real-Time API Guide](./real-time-api)
+- For real-time time-series API → [Real-Time API Guide](./real-time-api)
 - For Databricks lakehouse → [Databricks-to-Databricks Setup](./delta-sharing/databricks-to-databricks)
 - For Microsoft Fabric lakehouse → [Fabric-to-Fabric Setup](./delta-sharing/fabric-to-fabric)
-- For Snowflake lakehouse → [Snowflake-to-Snowflake Setup](./delta-sharing/open-protocol)
+- For Snowflake lakehouse → Coming soon. In the meantime, please consult: https://docs.snowflake.com/en/user-guide/data-sharing-intro
 
-### Step 3: Request Access
+(For the lakehouse methods, review the [Data Tables documentation](./lakehouse-data-sharing/data-structure/data-tables) to understand the schema and structure of your tables.
+)
+
+### Step 2: Request Access
 
 Contact your Nexalis account manager or email [contact@nexalis.io](mailto:contact@nexalis.io) with:
 - Your preferred access method(s)
@@ -141,7 +125,7 @@ Need help getting started or have questions about your deployment?
 
 ## References
 
-- [Delta Lake Open Source Project](https://delta.io/)
 - [Warp10 Time-Series Platform](https://www.warp10.io/)
 - [Databricks Delta Sharing](https://www.databricks.com/product/delta-sharing)
 - [Microsoft Fabric OneLake](https://learn.microsoft.com/en-us/fabric/onelake/)
+- [Snowflake Secure Data Sharing](https://docs.snowflake.com/en/user-guide/data-sharing-intro)

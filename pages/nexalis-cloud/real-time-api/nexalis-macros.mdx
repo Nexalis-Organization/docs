@@ -10,7 +10,7 @@ Nexalis Cloud provides custom WarpScript macros for advanced time-series data pr
 
 ## @nexalis/fetch_trapezoidal_averages
 
-Fetches time-series data from Warp10 and computes time-weighted (trapezoidal) averages over fixed-width time buckets. This is ideal for accurate aggregation of non-uniformly sampled data.
+Fetches time-series data from Nexalis Cloud and computes time-weighted (trapezoidal) averages over fixed-width time buckets. This is ideal for accurate aggregation of non-uniformly sampled data.
 
 ### Why Trapezoidal Averages?
 
@@ -32,7 +32,7 @@ Unlike simple arithmetic means, trapezoidal averaging accounts for the time dura
 
 ### Returns
 
-A list of GTS containing time-weighted averages for each bucket. Only LONG and DOUBLE value types are processed; discrete measurements are automatically filtered out.
+A list of GTS containing trapezoidal verages for each bucket. Only LONG and DOUBLE value types are processed; discrete measurements are automatically filtered out.
 
 ### Example Usage
 

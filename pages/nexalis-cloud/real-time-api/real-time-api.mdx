@@ -2,15 +2,15 @@
 title: "Real-Time API"
 ---
 
-Nexalis Cloud exposes a powerful real-time API powered by [Warp10](https://www.warp10.io/), a time-series database optimized for industrial IoT data. The API endpoint allows you to query and fetch high-frequency sensor data using WarpScript, a stack-based language designed for time-series analysis.
+Nexalis Cloud exposes a powerful real-time API which allows users to query and fetch high-frequency sensor data using WarpScript, a stack-based language designed for time-series analysis.
 
 ---
 
 ## Quick Start Examples
 
-- **[Nexalis Macros](./real-time-api/nexalis-macros)** - Learn how to use Nexalis custom macros for simplified queries
-- **[Python Examples](./real-time-api/python-examples)** - Integrate the API into your Python data pipelines
-- **[PowerBI Examples](./real-time-api/powerbi-examples)** - Create interactive dashboards with live time-series data
+- **[Nexalis Macros](./nexalis-macros)** - Learn how to use Nexalis custom macros for simplified queries
+- **[Python Examples](./python-examples)** - Integrate the API into your Python data pipelines
+- **[PowerBI Examples](./powerbi-examples)** - Create dashboards with time-series data
 
 
 ---
@@ -58,6 +58,7 @@ Example output:
 
 ```[[{"c":"nx.value","l":{"siteName":"TX_001","deviceModel":"Satcon",".app":"nexalis","deviceID":"01234","dataPoint":"42"},"a":{"dataObject":"TotW","subDataObject":"","protocol":"modbus_tcp","multiplier":"0.1","logicalNode":"MMXU","measurementType":"Analog","description":"AC Power, Generated = Export, from Inverter","engUnits":"kW","adder":"0","nx-agent-id":"v1.1.5#xxxx","assetType":"INV","subDeviceID":"BLK_001_23},"la":0,"v":[]}]]```
 
+[How to do it in python](./python-examples) 
 
 ### FETCH - Retrieve Time-Series Data
 
@@ -78,6 +79,8 @@ Example output:
 
 Here, each sub-list in the "v" (value) field is a measurement, where the first element is the microseconds unix timestamp, and the last element is the actual value.
 
+[How to do it in python](./python-examples) 
+
 ---
 
 Both FIND and FETCH functions support:
@@ -91,7 +94,7 @@ Both FIND and FETCH functions support:
 
 Nexalis provides ready-to-use macros that simplify common time-series operations:
 
-- **`@nexalis/fetch_trapezoidal_averages`** - Fetch and compute time-weighted averages for irregularly-sampled data
+- **`@nexalis/fetch_trapezoidal_averages`** - Fetch and compute trapezoidal averages for irregularly-sampled data
 - **`@nexalis/scale`** - Apply unit conversions and calibrations
 
 For detailed examples of using these macros, see the [Nexalis Macros guide](./real-time-api/nexalis-macros).
