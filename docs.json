@@ -37,9 +37,9 @@
                   {
                   "group": "Data Structure",
                     "pages": [
-                      "pages/nexalis-cloud/data/data-tables",
-                      "pages/nexalis-cloud/data/table-schema",
-                      "pages/nexalis-cloud/data/data-table-examples"
+                      "pages/nexalis-cloud/lakehouse-data-sharing/data-structure/data-tables",
+                      "pages/nexalis-cloud/lakehouse-data-sharing/data-structure/table-schema",
+                      "pages/nexalis-cloud/lakehouse-data-sharing/data-structure/data-table-examples"
                     ]
                   },
                   "pages/nexalis-cloud/lakehouse-data-sharing/databricks-to-databricks",
