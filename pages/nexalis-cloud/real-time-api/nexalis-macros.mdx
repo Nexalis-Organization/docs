@@ -4,7 +4,7 @@ title: "Nexalis Macros"
 
 # Nexalis Macros
 
-Nexalis Cloud provides custom WarpScript macros for advanced time-series data processing. These macros simplify complex operations and ensure accurate calculations.
+Nexalis Cloud provides built-in functions for advanced time-series data processing. These functions simplify complex operations and ensure accurate calculations.
 
 ---
 
@@ -15,7 +15,7 @@ Applies scaling transformations to GTS values using `multiplier` and `adder` att
 
 ### Use Cases
 
-The primary purpose of `@nexalis/scale` is to transform raw SCADA values into standardized units defined by the **Nexalis data model**. Values are stored "raw" (as sent from the site SCADA), and the `multiplier` and `adder` attributes bring them into the **correct units**.
+The primary purpose of `@nexalis/scale` is to transform raw industrial values into standardized units defined by the **Nexalis data model**. Values are stored "raw" (as sent from the data sources), and the `multiplier` and `adder` attributes bring them into the **correct units**.
 
 **Example**: A site sends active power measurements in Watts (W), but the Nexalis data model specifies kilowatts (kW). The GTS would have:
 - `multiplier: 0.001` (converts W → kW)
@@ -32,7 +32,7 @@ When you fetch this data and apply `@nexalis/scale`, a raw value of 5000 W becom
 
 ### Attributes Used
 
-The macro reads these attributes from each GTS:
+The function reads these attributes from each GTS:
 - **multiplier**: Multiplies each value (e.g., for unit conversion)
 - **adder**: Adds to each value (e.g., for offset correction)
 
@@ -75,7 +75,7 @@ A list of GTS with scaled values. The original `multiplier` and `adder` attribut
 
 @nexalis/scale
 ```
-> ⚠️ **Warning:** This macro is not idempotent. If you call it twice, it will scale the data twice.
+> ⚠️ **Warning:** This function is not idempotent. If you call it twice, it will scale the data twice.
 
 ---
 
