@@ -8,71 +8,6 @@ Nexalis Cloud provides custom WarpScript macros for advanced time-series data pr
 
 ---
 
-## @nexalis/fetch_trapezoidal_averages
-
-Fetches time-series data from Nexalis Cloud and computes time-weighted (trapezoidal) averages over fixed-width time buckets. This is ideal for accurate aggregation of non-uniformly sampled data.
-
-### Why Trapezoidal Averages?
-
-Unlike simple arithmetic means, trapezoidal averaging accounts for the time duration between data points, providing more accurate averages when:
-- Data points are irregularly spaced
-- Sampling rates vary over time
-- You need true time-weighted calculations
-
-### Parameters
-
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| `read_token` | STRING | Warp10 read token with fetch permissions |
-| `start` | STRING or LONG | Start timestamp (ISO8601 string or microseconds) |
-| `end` | STRING or LONG | End timestamp (ISO8601 string or microseconds) |
-| `bucket_size` | LONG | Bucket width in microseconds |
-| `class` | STRING | GTS class name to fetch (e.g., 'nx.value') |
-| `labels` | MAP | Labels **and attributes** to filter GTS (supports regexp with `~` prefix) |
-
-### Returns
-
-A list of GTS containing trapezoidal verages for each bucket. Only LONG and DOUBLE value types are processed; discrete measurements are automatically filtered out.
-
-### Example Usage
-
-```warpscript
-// Fetch 5-minute trapezoidal averages for 2 hours
-$RT                           // Read token
-'2025-12-19T10:00:00Z'       // Start time
-'2025-12-19T12:00:00Z'       // End time
-300000000                     // 5 minutes in microseconds
-'nx.value'                    // Class name
-{ 
-  'assetType' 'INV'
-  'dataObject' 'TotW'
-}
-@nexalis/fetch_trapezoidal_averages
-```
-
-### Example with Regexp
-
-```warpscript
-// Fetch dataPoints containing "INV" or "METER"
-$RT
-'2025-12-19T10:00:00Z'
-'2025-12-19T12:00:00Z'
-300000000
-'nx.value'
-{ 
-  'dataPoint' '~(.*INV.*|.*METER.*)'  // Regexp pattern
-}
-@nexalis/fetch_trapezoidal_averages
-```
-
-### How It Works
-
-1. **Fetch**: Retrieves GTS data with boundary points (1 pre and post) for accurate edge calculations
-2. **Filter**: Keeps only analog measurements (gets rid of strings/booleans)
-3. **Average**: Applies trapezoidal averaging to compute time-weighted means per bucket
-
----
-
 ## @nexalis/scale
 
 Applies scaling transformations to GTS values using `multiplier` and `adder` attributes. This is useful for unit conversions, calibration adjustments, or normalization.
@@ -80,7 +15,7 @@ Applies scaling transformations to GTS values using `multiplier` and `adder` att
 
 ### Use Cases
 
-The primary purpose of `@nexalis/scale` is to transform raw SCADA values into standardized units defined by the Nexalis data model. Values are stored "raw" (as sent from the site SCADA), and the `multiplier` and `adder` attributes bring them into the correct units.
+The primary purpose of `@nexalis/scale` is to transform raw SCADA values into standardized units defined by the **Nexalis data model**. Values are stored "raw" (as sent from the site SCADA), and the `multiplier` and `adder` attributes bring them into the **correct units**.
 
 **Example**: A site sends active power measurements in Watts (W), but the Nexalis data model specifies kilowatts (kW). The GTS would have:
 - `multiplier: 0.001` (converts W → kW)
@@ -101,7 +36,7 @@ The macro reads these attributes from each GTS:
 - **multiplier**: Multiplies each value (e.g., for unit conversion)
 - **adder**: Adds to each value (e.g., for offset correction)
 
-If one of 'multiplier' or 'adder' is missing or null, that transformation is skipped.
+If one of 'multiplier' or 'adder' is missing or null, that transformation is skipped (you get raw values).
 
 ### Formula
 
@@ -128,14 +63,83 @@ A list of GTS with scaled values. The original `multiplier` and `adder` attribut
 ```warpscript
 // Fetch raw active power data (stored in Watts from SCADA)
 {
-  'token' $RT 
-  'class' "nx.value"
+  'token' $read_token
+  'class' 'nx.value'
   'labels' { 'assetType' 'INV' 'dataObject' 'TotW' }
-  'start' "2025-12-15T00:00:00Z"
-  'end' "2025-12-15T23:59:59Z" 
+  'start' '2026-01-15T00:00:00Z'    // the trailing "Z" means "UTC timezone"
+  'end' '2026-01-18T23:59:59Z' 
 } FETCH
 
 // Apply scaling to convert W → kW per Nexalis data model
 // GTS has attributes: multiplier=0.001, adder=0
+
 @nexalis/scale
 ```
+> ⚠️ **Warning:** This macro is not idempotent. If you call it twice, it will scale the data twice.
+
+---
+
+
+## @nexalis/fetch_trapezoidal_averages
+
+Fetches time-series data from Nexalis Cloud and computes time-weighted (trapezoidal) averages over fixed-width time buckets. This is ideal for accurate aggregation of non-uniformly sampled data. This macro calls @nexalis/scale macro by default (the values returned are scaled).
+
+### Why Trapezoidal Averages?
+
+Unlike simple arithmetic means, trapezoidal averaging accounts for the time duration between data points, providing more accurate averages when:
+- Data points are irregularly spaced
+- Sampling rates vary over time
+- You need true time-weighted calculations
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `read_token` | STRING | Yes | Warp10 read token with fetch permissions |
+| `start` | STRING or LONG | Yes | Start timestamp (ISO8601 string or microseconds) |
+| `end` | STRING or LONG | Yes | End timestamp (ISO8601 string or microseconds) |
+| `bucket_size` | LONG | Yes | Bucket width in minutes |
+| `labels` | MAP | Yes | Labels **and attributes** to filter GTS (supports regexp with `~` prefix) |
+| `scaling` | BOOLEAN | No | Boolean to apply scaling using @nexalis/scale macro (default: true) |
+| `class` | STRING | No | Selector for the GTS classes (default: "nx.value") |
+
+### Returns
+
+A list of GTS containing trapezoidal averages for each bucket. Only LONG and DOUBLE value types are processed; discrete measurements (STRING/BOOLEAN) are automatically filtered out.
+
+<Note>
+**NaN values**: The macro returns `NaN` (Not a Number) for buckets where no values were recorded during the interval and no anterior values exist for trapezoidal interpolation. This will only occur at the start of a time series.
+</Note>
+
+### Example Usage
+
+```warpscript
+// Fetch 15-minute trapezoidal averages over 1 day
+
+{ 'token' $read_token
+  'start' '2026-01-01T00:00:00Z'
+  'end' '2026-01-02T00:00:00Z'
+  'bucket_size' 15    //minutes
+  'labels' { 'assetType' 'INV' 'dataObject' 'TotW' }
+  }
+  @nexalis/fetch_trapezoidal_averages
+```
+
+### Example with regular expression
+
+```warpscript
+// Fetch dataPoints containing "INV" or "METER"
+
+{ 'token' $read_token
+  'start' '2026-01-01T00:00:00Z'
+  'end' '2026-01-02T00:00:00Z'
+  'bucket_size' 15    //minutes
+  'labels' { 'dataPoint' '~(.*INV.*|.*METER.*)' }  // Regexp pattern
+  }
+```
+
+### How It Works
+
+1. **Retrieves** GTS data according to labels selection and extends time windows with boundary points (1 pre and post) for accurate edge calculations
+2. **Filters** to keep only analog measurements (gets rid of strings/booleans)
+3. **Averages** values by applying trapezoidal averaging to compute time-weighted means per bucket

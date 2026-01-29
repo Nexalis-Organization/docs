@@ -2,13 +2,13 @@
 title: "Power BI Examples"
 ---
 
-Connect Power BI to Nexalis Cloud's real-time API to query your tags list and create interactive dashboards. This guide shows the recommended approach using Power BI's Web connector with parameters.
+Connect Power BI to Nexalis Cloud's real-time API to build interactive dashboards. This guide provides two tutorials: first, how to query your tags list, and second, how to fetch time-series data.
 
 ---
 
-## Setup: Get ready to query Nexalis API
+## Tutorial 1: Getting the Nexalis Tags List
 
-This method retrieves all available data points from your Nexalis Cloud instance, including labels and attributes like siteName, deviceID, dataObject, multiplier, etc.
+This tutorial shows how to retrieve all available data points from your Nexalis Cloud instance, including labels and attributes like siteName, deviceID, dataObject, assetType, etc.
 
 ### Step 1: Create a Blank Report
 
@@ -138,7 +138,7 @@ in
 4. Click **Done**
 5. You can rename this function "fnNexalisTagsList"
 
-### Step 5: Create the connection
+### Step 4: Create the connection
 
 1. Click **Invoke**, which will prompt the warning message "Please specify how to connect".
 2. Click **Edit Credentials**
@@ -147,7 +147,7 @@ in
 
 A table with all your tags should now appear in Power BI.
 
-### Step 4: Load the Data
+### Step 5: Load the Data
 
 Click **Close & Apply** to load the tags list table into Power BI.
 
@@ -179,40 +179,49 @@ Your NexalisTagsList table contains all available tags with their properties:
 
 ---
 
-## Benefits of This Approach
+## Why Start with Tags List?
 
-1. **Start with Tags List First**: It's more efficient to query and explore the list of available tags (*FIND*) before fetching tags with their values (*FETCH*). *FIND* queries are lightweight and fast, while *FETCH* returns actual time-series values which can take significantly longer if you're fetching a large time window.
+**Start with Tags List First**: It's more efficient to query and explore the list of available tags (*FIND*) before fetching time-series values (*FETCH*). *FIND* queries are lightweight and fast, while *FETCH* returns actual time-series data which can take significantly longer for large time windows.
 
-2. **Parameter-Based Configuration**: Parametrizing the URL and token allows you to:
-   - **Reuse across functions**: Reference the same parameters in multiple queries without duplicating configuration
-   - **Share safely**: Share Power BI functions with colleagues without exposing your personal READ token
+**Parameter-Based Configuration**: Parametrizing the URL and token allows you to:
+- **Reuse across functions**: Reference the same parameters in multiple queries without duplicating configuration
+- **Share safely**: Share Power BI functions with colleagues without exposing your personal READ token
+
 ---
 
+## Tutorial 2: Fetching Time-Series Data (Advanced)
 
-## Advanced: Fetching Time-Series Data
+This tutorial shows how to create a function that fetches actual time-series values using the `@nexalis/fetch_trapezoidal_averages` macro.
 
-To fetch actual time-series values, go back to your report, open a new query, and paste the following in the query editor:
+
+It assumes that you already completed Tutorial 1 and have the `NexalisApiBaseUrl` and `NexalisApiReadToken` parameters configured with the API connection established.
+
+---
+
+### Step 1: Create the Fetch Trapezoidal Function
+
+1. Create a new blank query
+2. Go to **Home** → **Advanced Editor**
+3. Paste the following code:
 
 ```m
-(token as text, start as any, end as any, span as any, labels as text) as table =>
+(token as text, start as any, end as any, bucket_size as any, labels as text) as table =>
 let
     // BaseUrl param is expected to end with /v0 (e.g. https://host/api/v0)
     ExecUrl = NexalisApiBaseUrl & "/exec",
 
     // Helpers
     EscapeWarpString = (s as text) as text =>
-        // minimal escaping for single quotes in WarpScript strings
         Text.Replace(s, "'", "\\'"),
 
-    // Build the WarpScript body (one item per line, then the macro call)
+    // Build the WarpScript body
     BodyText = Text.Combine(
         {
-            "'" & EscapeWarpString(token) & "'",   // <token> as a WarpScript string
-            start,                      // <start> (microseconds as text)
-            end,                        // <end> (microseconds as text)
-            span,                       // <span> (microseconds as text)
-            "'nx.value'",               // <class> as a WarpScript string
-            labels,                     // <labels> (WarpScript literal, e.g. {} or { 'k' 'v' })
+            "{ 'token' '" & EscapeWarpString(token) & "'",
+            " 'start' '" & EscapeWarpString(Text.From(start)) & "'",
+            " 'end' '"   & EscapeWarpString(Text.From(end))   & "'",
+            " 'bucket_size' " & bucket_size,
+            " 'labels' " & labels & " }",
             "@nexalis/fetch_trapezoidal_averages"
         },
         "#(lf)"
@@ -229,12 +238,17 @@ let
         ]
     ),
 
-    Raw = Json.Document(RawBin),
+    RawText0 = Text.FromBinary(RawBin, TextEncoding.Utf8),
+    RawText1 = Text.Replace(RawText0, ":NaN", ":null"),
+    RawText2 = Text.Replace(RawText1, ",NaN", ",null"),
+    RawText  = Text.Replace(RawText2, "[NaN", "[null"),
+    Raw = Json.Document(RawText),
 
     // Warp10 output shapes we expect: [[]] or [[{...}]] or [[{...},{...},...]]
     Inner = if List.Count(Raw) = 0 then {} else Raw{0},
     GTSList = if Inner = null or (Type.Is(Value.Type(Inner), List.Type) = false) then {} else Inner,
 
+    // Keep only requested columns:
     Rows =
         List.Combine(
             List.Transform(GTSList, each
@@ -255,24 +269,22 @@ let
                             value = row{ List.Count(row) - 1 },
 
                             rec = [
-                                dtConnector      = dtConnector,
-                                siteName         = try Record.Field(labs, "siteName")    otherwise null,
-                                deviceModel      = try Record.Field(labs, "deviceModel") otherwise null,
-                                deviceID         = try Record.Field(labs, "deviceID")    otherwise null,
-                                dataPoint        = try Record.Field(labs, "dataPoint")   otherwise null,
-                                value            = value,
-                                description      = try Record.Field(atts, "description") otherwise null,
-                                dataObject       = try Record.Field(atts, "dataObject")       otherwise null,
-                                subDataObject    = try Record.Field(atts, "subDataObject")    otherwise null,
-                                protocol         = try Record.Field(atts, "protocol")         otherwise null,
-                                multiplier       = try Record.Field(atts, "multiplier")       otherwise null,
-                                logicalNode      = try Record.Field(atts, "logicalNode")      otherwise null,
-                                measurementType  = try Record.Field(atts, "measurementType")  otherwise null,
-                                engUnits         = try Record.Field(atts, "engUnits")         otherwise null,
-                                adder            = try Record.Field(atts, "adder")            otherwise null,
-                                #"nx-agent-id"   = try Record.Field(atts, "nx-agent-id")      otherwise null,
-                                assetType        = try Record.Field(atts, "assetType")        otherwise null,
-                                subDeviceID      = try Record.Field(atts, "subDeviceID")      otherwise null
+                                dtConnector = dtConnector,
+                                siteName    = try Record.Field(labs, "siteName")    otherwise null,
+                                deviceModel = try Record.Field(labs, "deviceModel") otherwise null,
+                                deviceID    = try Record.Field(labs, "deviceID")    otherwise null,
+                                dataPoint   = try Record.Field(labs, "dataPoint")   otherwise null,
+                                value = value,
+                                description     = try Record.Field(atts, "description")     otherwise null,
+                                subDeviceID     = try Record.Field(atts, "subDeviceID")     otherwise null,
+                                assetType       = try Record.Field(atts, "assetType")       otherwise null,
+                                logicalNode     = try Record.Field(atts, "logicalNode")     otherwise null,
+                                dataObject      = try Record.Field(atts, "dataObject")      otherwise null,
+                                subDataObject   = try Record.Field(atts, "subDataObject")   otherwise null,
+                                measurementType = try Record.Field(atts, "measurementType") otherwise null,
+                                engUnits        = try Record.Field(atts, "engUnits")        otherwise null,
+                                multiplier      = try Record.Field(atts, "multiplier")      otherwise null,
+                                adder           = try Record.Field(atts, "adder")           otherwise null
                             ]
                         in
                             rec
@@ -282,17 +294,11 @@ let
 
     TableOut =
         if List.Count(Rows) = 0
-        then
-            #table(
-                {
-                    "dtConnector","siteName","deviceModel","deviceID","dataPoint","description","value",
-                    "dataObject","subDataObject","protocol","multiplier","logicalNode","measurementType",
-                    "engUnits","adder","nx-agent-id","assetType","subDeviceID"
-                },
-                {}
-            )
-        else
-            Table.FromRecords(Rows),
+        then #table(
+        {   "dtConnector","siteName","deviceModel","deviceID","dataPoint", "value",
+            "description","subDeviceID","assetType","logicalNode","dataObject","subDataObject",
+            "measurementType","engUnits","multiplier","adder" }, {})
+        else Table.FromRecords(Rows),
 
     Typed = Table.TransformColumnTypes(
         TableOut,
@@ -302,25 +308,101 @@ let
             {"deviceModel", type text},
             {"deviceID", type text},
             {"dataPoint", type text},
-            {"description", type text},
             {"value", type number},
+            {"description", type text},
+            {"subDeviceID", type text},
+            {"assetType", type text},
+            {"logicalNode", type text},
             {"dataObject", type text},
             {"subDataObject", type text},
-            {"protocol", type text},
-            {"multiplier", type number},
-            {"logicalNode", type text},
             {"measurementType", type text},
             {"engUnits", type text},
-            {"adder", type number},
-            {"nx-agent-id", type text},
-            {"assetType", type text},
-            {"subDeviceID", type text}
+            {"multiplier", type text},
+            {"adder", type text}
         }
     )
 in
     Typed
 ```
 
+4. Click **Done**
+
+### Step 2: Rename the Function
+
+1. Rename the query to `fnFetchTrapezoidalAverages`
+
+### Step 3: Test the Function
+
+1. Create a new blank query
+2. Go to **Home** → **Advanced Editor**
+3. Paste the following example code:
+
+```m
+let
+    Token = NexalisApiReadToken,
+    Start = "2026-01-01T00:00:00Z",
+    End   = "2026-01-01T04:00:00Z",
+    BucketSize  = "30",
+    Labels = "{ 'dataPoint' 'ns=2;s=[APX1]/PV/BLK-22/INV-15/VAL_P_KW' }",
+
+    Result = fnFetchTrapezoidalAverages(Token, Start, End, BucketSize, Labels)
+in
+    Result
+```
+
+4. Click **Done** and then **Refresh** to execute the query
+
+You can now modify the parameters (`Start`, `End`, `BucketSize`, `Labels`) to query different time ranges and data points.
+
+---
+
+## What You Get
+
+The function returns a table with time-series data aggregated into buckets:
+
+| Column | Description |
+|--------|-------------|
+| `dtConnector` | Timestamp for the bucket (datetimezone) |
+| `siteName` | Site identifier |
+| `deviceModel` | Device model name |
+| `deviceID` | Unique device identifier |
+| `dataPoint` | Raw data point identifier |
+| `value` | Time-weighted average value for the bucket |
+| `description` | Human-readable description |
+| `subDeviceID` | Sub-device identifier if applicable |
+| `assetType` | Asset type (INV, METER, etc.) |
+| `logicalNode` | IEC 61850 logical node |
+| `dataObject` | Standardized data object name |
+| `subDataObject` | Sub-object for complex measurements |
+| `measurementType` | Analog or Discrete |
+| `engUnits` | Engineering units (kW, kWh, V, etc.) |
+| `multiplier` | Scaling multiplier for unit conversion |
+| `adder` | Scaling offset for unit conversion |
+
+<Note>
+**Null values**: If all values in the result are `null`, this means the queried time range has no data points and no anterior data points for trapezoidal interpolation. Try expanding your time range or verifying the data point exists in that period.
+</Note>
+
+---
+
+## Best Practices
+
+<Warning>
+**Avoid Querying Real-Time High-Frequency Data in Power BI**
+
+Power BI is not optimized for handling large volumes of high-frequency time-series data. Querying real-time sensor data directly (especially at sub-minute intervals) can:
+
+- Cause significant memory issues and crashes
+- Result in slow refresh times and dashboard lag
+- Impact overall Power BI Desktop/Service performance
+
+**Recommended approach:** Use aggregated or pre-processed data for Power BI dashboards. Consider:
+- Querying data at hourly or daily intervals instead of real-time
+- Using Nexalis's data aggregation features before importing to Power BI
+- Limiting date ranges to only the data you need for visualization
+
+For real-time analysis and high-frequency data processing, use the [Python integration](./python-examples) instead.
+</Warning>
 
 ---
 

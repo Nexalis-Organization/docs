@@ -3,7 +3,7 @@ title: "Real-Time API"
 ---
 
 Nexalis Cloud exposes a powerful real-time API which allows users to query and fetch high-frequency sensor data using WarpScript, a stack-based language designed for time-series analysis.
-
+---
 ---
 
 ## Quick Start Examples
@@ -45,7 +45,9 @@ The API uses WarpScript, a stack-based language for time-series operations. Two 
 
 ### FIND - Discover Available Metrics
 
-Search for time-series matching specific criteria without fetching values. Useful for exploring what data is available.
+Search for time-series matching specific criteria without fetching values. Useful for exploring what data is available. Complete documentation [here](https://www.warp10.io/doc/FIND).
+
+Example query:
 
 ```warpscript
 {
@@ -54,30 +56,48 @@ Search for time-series matching specific criteria without fetching values. Usefu
   'labels' { 'assetType' 'INV' 'dataObject' 'TotW' }
 } FIND
 ```
-Example output:
+Output:
 
-```[[{"c":"nx.value","l":{"siteName":"TX_001","deviceModel":"Satcon",".app":"nexalis","deviceID":"01234","dataPoint":"42"},"a":{"dataObject":"TotW","subDataObject":"","protocol":"modbus_tcp","multiplier":"0.1","logicalNode":"MMXU","measurementType":"Analog","description":"AC Power, Generated = Export, from Inverter","engUnits":"kW","adder":"0","nx-agent-id":"v1.1.5#xxxx","assetType":"INV","subDeviceID":"BLK_001_23},"la":0,"v":[]}]]```
+```
+[[{"c":"nx.value",
+"l":{"siteName":"TX_001","deviceModel":"Satcon",".app":"nexalis","deviceID":"01234","dataPoint":"42"},
+"a":{"dataObject":"TotW","subDataObject":"","protocol":"modbus_tcp","multiplier":"0.1","logicalNode":"MMXU","measurementType":"Analog","description":"AC Power, Generated = Export, from Inverter","engUnits":"kW","adder":"0","nx-agent-id":"v1.1.5#xxxx","assetType":"INV","subDeviceID":"BLK_001_23},
+"la":0,
+"v":[]}]]
+```
+
+FIND returns class (`"c":{...}`), labels (`"l":{...}`), attributes (`"a":{...}`), and an empty value field (`"v":[]`).
 
 [How to do it in python](./python-examples) 
 
+---
+
 ### FETCH - Retrieve Time-Series Data
 
-Fetch actual values for specific time ranges and metrics.
+Fetch actual values for specific time ranges and metrics. Complete documentation [here](https://www.warp10.io/doc/FETCH).
+
+Example query:
 
 ```warpscript
 {
   'token' 'YOUR_READ_TOKEN'
   'class' 'nx.value'
   'labels' { 'assetType' 'INV' 'dataObject' 'TotW' }
-  'start' '2025-01-15T00:00:00Z'
-  'end' '2025-01-15T01:00:00Z'
+  'start' '2026-01-15T12:00:00Z'
+  'end' '2026-01-15T12:00:00Z'
 } FETCH
 ```
-Example output:
+Output:
 
-```[[{"c":"nx.value","l":{"siteName":"TX_001","deviceModel":"Satcon",".app":"nexalis","deviceID":"01234","dataPoint":"42"},"a":{"dataObject":"TotW","subDataObject":"","protocol":"modbus_tcp","multiplier":"0.1","logicalNode":"MMXU","measurementType":"Analog","description":"AC Power, Generated = Export, from Inverter","engUnits":"kW","adder":"0","nx-agent-id":"v1.1.5#xxxx","assetType":"INV","subDeviceID":"BLK_001_23},"la":0,"v":[[1768438794869000,0,348],[1768438790168000,0,346],[1768438784989000,0,350], ... ,[1768435210217000,0,405],[1768435200214000,0,386]]}]]```
+```
+[[{"c":"nx.value",
+"l":{"siteName":"TX_001","deviceModel":"Satcon",".app":"nexalis","deviceID":"01234","dataPoint":"42"},
+"a":{"dataObject":"TotW","subDataObject":"","protocol":"modbus_tcp","multiplier":"0.1","logicalNode":"MMXU","measurementType":"Analog","description":"AC Power, Generated = Export, from Inverter","engUnits":"kW","adder":"0","nx-agent-id":"v1.1.5#xxxx","assetType":"INV","subDeviceID":"BLK_001_23},
+"la":0,
+"v":[[1768438794869000,0,348],[1768438790168000,0,346],[1768438784989000,0,350], ... ,[1768435210217000,0,405],[1768435200214000,0,386]]}]]
+```
 
-Here, each sub-list in the "v" (value) field is a measurement, where the first element is the microseconds unix timestamp, and the last element is the actual value.
+Here, each sub-list in the "v" (value) field is a measurement, where the first element is the microseconds unix time, and the last element is the actual value.
 
 [How to do it in python](./python-examples) 
 
@@ -85,8 +105,10 @@ Here, each sub-list in the "v" (value) field is a measurement, where the first e
 
 Both FIND and FETCH functions support:
 - **Regular expressions** for pattern matching (prefix with `~`)
-- **Multiple filters** using labels and attributes
-- **Flexible time ranges** (ISO8601 strings or microseconds unix timestamp)
+- **Multiple filters** on labels and attributes (both passed in the "labels" field)
+
+Additionally, FETCH supports:
+- **Flexible time ranges** with ISO8601 strings or microseconds unix time
 
 ---
 
@@ -94,10 +116,10 @@ Both FIND and FETCH functions support:
 
 Nexalis provides ready-to-use macros that simplify common time-series operations:
 
-- **`@nexalis/fetch_trapezoidal_averages`** - Fetch and compute trapezoidal averages for irregularly-sampled data
 - **`@nexalis/scale`** - Apply unit conversions and calibrations
+- **`@nexalis/fetch_trapezoidal_averages`** - Fetch and compute trapezoidal averages for irregularly-sampled data
 
-For detailed examples of using these macros, see the [Nexalis Macros guide](./real-time-api/nexalis-macros).
+For detailed examples of using these macros, see the [Nexalis Macros guide](./nexalis-macros).
 
 ### Custom Macros
 
