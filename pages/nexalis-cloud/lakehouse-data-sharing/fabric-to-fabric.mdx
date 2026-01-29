@@ -1,0 +1,119 @@
+# Fabric-to-Fabric Data Sharing
+
+**Fabric-to-Fabric data sharing** enables seamless sharing of datasets between Nexalis and your Microsoft Fabric workspace through OneLake shortcuts and External Data Shares.
+
+---
+
+## OneLake Shortcuts
+
+OneLake shortcuts allow you to access data stored in Nexalis' Fabric lakehouse directly within your own Fabric workspace without copying or moving the data. This provides:
+
+- **Zero data duplication** — Access shared data in-place
+- **Real-time access** — Always see the latest data from Nexalis
+- **No egress costs** — Nexalis stores data in your desired Azure region
+- **Native Fabric integration** — Works with all Fabric compute engines (Spark, SQL, Power BI, etc.)
+
+---
+
+## How It Works
+
+Nexalis uses Microsoft Fabric's **External Data Share** feature to create OneLake shortcuts in your workspace. These shortcuts point directly to Delta tables in Nexalis' lakehouse, providing real-time access without data duplication.
+
+## Required Information
+
+To configure Fabric-to-Fabric sharing, Nexalis needs an **email address** in your Microsoft organization and your **Azure Tenant ID**.
+
+**How to find it:**
+- In Fabric: Click on your profile icon in the top right corner → click the small info circle next to your tenant name → copy your tenant ID.
+- In Azure Portal: Navigate to Microsoft Entra ID → copy your tenant ID.
+
+### 2. Enable Data Sharing in Fabric
+
+Your Fabric organization must have the **"Users can accept external data shares"** setting enabled.
+
+**How to enable:**
+1. Go to **Fabric Admin Portal** (gear icon → Admin portal)
+2. Navigate to **Tenant settings**
+3. Under **External data sharing**, find **"Users can accept external data shares"**
+4. Toggle the setting to **Enabled**
+5. Click **Apply**
+
+⚠️ **Note:** This setting must be enabled by a Fabric administrator before you can receive data shares from Nexalis.
+
+---
+
+## Setup Process
+
+1. **Collect the required information** listed above
+2. **Share credentials securely** with your Nexalis account manager or support contact
+3. **Nexalis configures** the OneLake shortcuts in your specified lakehouse
+4. **Verify access** to shared tables in your Fabric workspace
+
+⚠️ **Recommendation:** To minimize latency and avoid egress costs, use a Fabric workspace in the **same Azure region** as the Nexalis environment.
+
+---
+
+## After Setup
+
+Once configured, you will see shortcuts to Nexalis shared tables directly in your Fabric lakehouse under the `Files` directory:
+
+- `gold_<org_name>_avg_std/` — Aggregated time-series data with averages and standard deviations
+- `gold_<org_name>_hf_std/` — High-frequency time-series data in standardized format
+
+These shortcuts behave like native Delta tables and can be queried using:
+- **SQL endpoints** in Fabric
+- **Power BI** for visualization
+- **Spark notebooks** for data processing
+- **Data pipelines** for orchestration
+
+---
+
+## Example: Querying Shared Data
+
+```sql
+-- Query aggregated data in SQL endpoint
+SELECT 
+    siteName,
+    deviceID,
+    dataPoint,
+    timestamp,
+    avg_value,
+    std_value
+FROM gold_yourcompany_avg_std
+WHERE siteName = 'site_A'
+    AND timestamp >= '2025-01-01'
+ORDER BY timestamp DESC
+LIMIT 100;
+```
+
+---
+
+## Security
+
+- **Access control** is managed through Azure RBAC and Fabric workspace permissions
+- **Service principal** should follow least-privilege principles
+- **Credentials** are stored securely by Nexalis and rotated periodically
+- **Audit logs** track all data access through Fabric's built-in monitoring
+
+---
+
+---
+
+## After setup
+
+After Nexalis completes the configuration, you will see the shared tables directly in your Fabric workspace:
+
+- `gold_<org_name>_avg_std`
+- `gold_<org_name>_hf_std`
+
+---
+
+## References
+
+- [Microsoft Fabric OneLake shortcuts documentation](https://learn.microsoft.com/en-us/fabric/onelake/onelake-shortcuts)
+- [Microsoft Fabric External Data Shares](https://learn.microsoft.com/en-us/rest/api/fabric/core/external-data-shares)
+- [Azure Service Principal setup](https://learn.microsoft.com/en-us/entra/identity-platform/howto-create-service-principal-portal)
+
+---
+
+**Note:** This uses Microsoft Fabric's native sharing capabilities.

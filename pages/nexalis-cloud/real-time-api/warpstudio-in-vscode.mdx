@@ -1,0 +1,319 @@
+---
+title: "WarpStudio in VS Code"
+---
+
+# WarpStudio in VS Code
+
+WarpStudio is a VS Code extension that provides an interactive development environment for writing and testing WarpScript queries. Use it to prototype and validate queries before integrating them into Power BI, Python, or other applications.
+
+---
+
+## Installation
+
+1. Open VS Code
+2. Go to Extensions (Ctrl+Shift+X or Cmd+Shift+X)
+3. Search for "WarpStudio"
+4. Click **Install**
+
+Or install via command line:
+```bash
+code --install-extension senx.warpstudio
+```
+
+---
+
+## Configuration
+
+### Step 1: Configure Your Warp10 Endpoint
+
+1. Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on Mac)
+2. Type "WarpStudio: Configure"
+3. Enter your configuration:
+   - **Warp10 Endpoint:** `https://yourcompany.app.nexalis.io/api/v0/exec`
+   - **READ Token:** Your Nexalis READ token
+
+Alternatively, create a `.warpstudio` configuration file in your workspace:
+
+```json
+{
+  "url": "https://yourcompany.app.nexalis.io/api/v0/exec",
+  "readToken": "YOUR_READ_TOKEN"
+}
+```
+
+---
+
+## Quick Start
+
+### Step 1: Create a WarpScript File
+
+Create a new file with the `.mc2` extension (e.g., `query.mc2`).
+
+### Step 2: Write Your Query
+
+```warpscript
+{
+  'token' 'YOUR_READ_TOKEN'
+  'class' 'nx.value'
+  'labels' { 'assetType' 'INV' 'dataObject' 'TotW' }
+  'start' '2026-01-15T00:00:00Z'
+  'end' '2026-01-15T01:00:00Z'
+} FETCH
+@nexalis/scale
+```
+
+### Step 3: Execute the Query
+
+- **Keyboard shortcut:** `Ctrl+Alt+E` (or `Cmd+Alt+E` on Mac)
+- **Command palette:** Press `Ctrl+Shift+P` → "WarpStudio: Execute"
+- **Click the execute button** in the editor toolbar
+
+Results appear in the output panel below.
+
+---
+
+## Features
+
+### Syntax Highlighting
+
+WarpStudio provides full syntax highlighting for WarpScript, making code easier to read and reducing syntax errors.
+
+### Interactive Execution
+
+Execute queries directly from VS Code and see results instantly. No need to switch between tools or terminals.
+
+### Auto-Completion
+
+Get intelligent code completion for:
+- WarpScript functions (FETCH, BUCKETIZE, MAP, etc.)
+- Nexalis custom macros (@nexalis/fetch_trapezoidal_averages, @nexalis/scale)
+- Common operators and constants
+
+### Stack Visualization
+
+See the WarpScript stack state at each step, helping you understand how your query executes.
+
+### Query History
+
+Access previously executed queries to quickly re-run or modify past work.
+
+### Visual Output
+
+View time-series data in charts and tables directly in VS Code.
+
+---
+
+## Example Workflow
+
+### 1. Test a Basic Query
+
+```warpscript
+// Test fetching data for a single device
+{
+  'token' 'YOUR_READ_TOKEN'
+  'class' 'nx.value'
+  'labels' { 'assetType' 'INV' 'deviceID' 'INV_8896' }
+  'start' '2026-01-20T00:00:00Z'
+  'end' '2026-01-20T01:00:00Z'
+} FETCH
+```
+
+Execute to verify the query works and inspect the GTS structure.
+
+### 2. Add Scaling
+
+```warpscript
+{
+  'token' 'YOUR_READ_TOKEN'
+  'class' 'nx.value'
+  'labels' { 'assetType' 'INV' 'deviceID' 'INV_8896' }
+  'start' '2026-01-20T00:00:00Z'
+  'end' '2026-01-20T01:00:00Z'
+} FETCH
+@nexalis/scale
+```
+
+Execute again to see scaled values.
+
+### 3. Test Aggregation
+
+```warpscript
+// Fetch and compute 5-minute trapezoidal averages
+'YOUR_READ_TOKEN'
+'2026-01-20T00:00:00Z'
+'2026-01-20T12:00:00Z'
+300000000  // 5 minutes in microseconds
+'nx.value'
+{ 'assetType' 'INV' 'dataObject' 'TotW' }
+@nexalis/fetch_trapezoidal_averages
+```
+
+### 4. Export to PowerBI
+
+Once your query works, copy it directly into PowerBI's Web connector or Python script.
+
+---
+
+## Best Practices
+
+### 1. Use Comments
+
+Document your queries with comments:
+
+```warpscript
+// Fetch last 24 hours of inverter power data
+{
+  'token' 'YOUR_READ_TOKEN'
+  'class' 'nx.value'
+  'labels' { 'assetType' 'INV' 'dataObject' 'TotW' }
+  'start' NOW 24 h -
+  'end' NOW
+} FETCH
+
+// Apply scaling to convert to data model units
+@nexalis/scale
+```
+
+### 2. Start Small
+
+Begin with small time ranges to test queries quickly:
+
+```warpscript
+// Test with 1 hour first
+'start' '2026-01-20T00:00:00Z'
+'end' '2026-01-20T01:00:00Z'
+
+// Then expand to larger ranges
+'start' '2026-01-15T00:00:00Z'
+'end' '2026-01-20T00:00:00Z'
+```
+
+### 3. Save Reusable Queries
+
+Create a library of `.mc2` files for common patterns:
+
+```
+queries/
+  fetch_inverter_power.mc2
+  fetch_site_energy.mc2
+  aggregate_hourly.mc2
+```
+
+### 4. Test Edge Cases
+
+Verify your queries handle:
+- Empty results (no data in time range)
+- Missing labels or attributes
+- Null values
+
+### 5. Validate Before Production
+
+Always test queries in WarpStudio before deploying to:
+- PowerBI dashboards
+- Production Python scripts
+- Automated data pipelines
+
+---
+
+## Tips and Tricks
+
+### Use Variables for Readability
+
+```warpscript
+// Define variables at the top
+'YOUR_READ_TOKEN' 'RT' STORE
+'2026-01-20T00:00:00Z' 'START' STORE
+'2026-01-20T12:00:00Z' 'END' STORE
+
+// Use in query
+{
+  'token' $RT
+  'class' 'nx.value'
+  'labels' { 'assetType' 'INV' }
+  'start' $START
+  'end' $END
+} FETCH
+```
+
+### Debug with MSGFAIL
+
+Add checkpoints to understand what's on the stack:
+
+```warpscript
+{
+  'token' 'YOUR_READ_TOKEN'
+  'class' 'nx.value'
+  'labels' { 'assetType' 'INV' }
+  'start' NOW 1 h -
+  'end' NOW
+} FETCH
+
+DUP SIZE 'Fetched GTS count: ' SWAP + MSGFAIL
+```
+
+### Measure Performance
+
+Check how long queries take:
+
+```warpscript
+NOW 'startTime' STORE
+
+// Your query here
+{ ... } FETCH
+@nexalis/scale
+
+NOW $startTime - 'Query took (microseconds): ' SWAP + MSGFAIL
+```
+
+---
+
+## Keyboard Shortcuts
+
+| Action | Windows/Linux | Mac |
+|--------|---------------|-----|
+| Execute query | `Ctrl+Alt+E` | `Cmd+Alt+E` |
+| Format code | `Ctrl+Shift+F` | `Cmd+Shift+F` |
+| Toggle output panel | `Ctrl+J` | `Cmd+J` |
+| Command palette | `Ctrl+Shift+P` | `Cmd+Shift+P` |
+
+---
+
+## Troubleshooting
+
+### Connection Error
+
+**Problem:** "Unable to connect to Warp10 endpoint"
+
+**Solutions:**
+- Verify the endpoint URL is correct
+- Check that your READ token is valid
+- Ensure firewall allows outbound HTTPS connections
+- Test the endpoint with cURL to isolate the issue
+
+### Invalid Token
+
+**Problem:** "Authentication failed"
+
+**Solutions:**
+- Verify token hasn't expired
+- Check for extra spaces in token string
+- Contact [contact@nexalis.io](mailto:contact@nexalis.io) for a new token
+
+### Syntax Error
+
+**Problem:** Query fails with syntax error
+
+**Solutions:**
+- Check for missing quotes or braces
+- Verify WarpScript function names are correct
+- Use syntax highlighting to identify issues
+- Test simpler versions of the query incrementally
+
+---
+
+## Next Steps
+
+- Learn about [Nexalis Macros](./nexalis-macros) to use in your queries
+- Integrate queries into [Python](./python-examples) scripts
+- Build dashboards with [PowerBI](./powerbi-examples)
+- Review the [API documentation](./real-time-api) for advanced features

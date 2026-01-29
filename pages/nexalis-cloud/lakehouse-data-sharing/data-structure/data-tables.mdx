@@ -1,0 +1,25 @@
+## Data tables you will receive
+
+When exploring Nexalis data, you will have access to two core standardized tables:
+
+- **`gold_<org_name>_avg_std`** — Contains raw and standardized data, **aggregated in X-minute intervals** (X-minute interval is a parameter of the Nexalis Agent). Includes minimum, maximum, count and average values. Does not include discrete tags.
+- **`gold_<org_name>_hf_std`** — Contains raw and standardized **high‑frequency** data (per‑second). Includes discrete tags (e.g., booleans and enumerations for alarms and codes)
+
+> **gold** means final, trusted outputs—business-ready tables designed for consumption in dashboards, analytics, downstream pipelines and AI workloads.
+
+> **std** means tables contain standardized columns for cross-vendor comparison and values are scaled to the data model units. Ask for the Nexalis reference data model for more details.
+
+> Both tables contain raw and standardized device data, but differ in **frequency, aggregation,** and whether **discrete tags** (booleans, enumerations) are included.
+
+> _Tip: To filter only standardized tags, use a condition like `dataObject != null` in your queries._
+
+---
+
+## Comparison of Tables
+
+| Table Name                 | Data Frequency                              | Aggregation                         | Discrete Tags | Best For |
+|---------------------------|----------------------------------------------|-------------------------------------|---------------|----------|
+| `gold_<org_name>_avg_std` | X‑minute intervals (per‑Nexalis agent configurable) | Aggregated (min, max, avg, count)   | No            | Analysis, reporting, ML model |
+| `gold_<org_name>_hf_std`  | High frequency (per‑second raw data)        | None (raw values)                   | Yes           | AI/ML, trending, alarms, troubleshooting |
+
+---

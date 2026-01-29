@@ -1,0 +1,149 @@
+---
+title: "Real-Time API"
+---
+
+Nexalis Cloud exposes a powerful real-time API which allows users to query and fetch high-frequency sensor data using WarpScript, a stack-based language designed for time-series analysis.
+---
+---
+
+## Quick Start Examples
+
+- **[Nexalis Macros](./nexalis-macros)** - Learn how to use Nexalis custom macros for simplified queries
+- **[Python Examples](./python-examples)** - Integrate the API into your Python data pipelines
+- **[PowerBI Examples](./powerbi-examples)** - Create dashboards with time-series data
+
+
+---
+
+## API Endpoint
+
+The Nexalis real-time API is accessible via your dedicated endpoint:
+
+```
+https://yourcompany.app.nexalis.io/api/v0/exec
+```
+
+Replace `yourcompany` with your organization's name. All requests must be sent via HTTP POST with WarpScript code in the request body.
+
+---
+
+## Authentication
+
+All API requests require authentication using a Warp10 READ token passed in the request header:
+
+```bash
+X-Warp10-Token: YOUR_READ_TOKEN
+```
+
+> Contact [contact@nexalis.io](mailto:contact@nexalis.io) to obtain your READ token.
+
+---
+
+## Core Query Functions
+
+The API uses WarpScript, a stack-based language for time-series operations. Two main functions are available:
+
+### FIND - Discover Available Metrics
+
+Search for time-series matching specific criteria without fetching values. Useful for exploring what data is available. Complete documentation [here](https://www.warp10.io/doc/FIND).
+
+Example query:
+
+```warpscript
+{
+  'token' 'YOUR_READ_TOKEN'
+  'class' 'nx.value'
+  'labels' { 'assetType' 'INV' 'dataObject' 'TotW' }
+} FIND
+```
+Output:
+
+```
+[[{"c":"nx.value",
+"l":{"siteName":"TX_001","deviceModel":"Satcon",".app":"nexalis","deviceID":"01234","dataPoint":"42"},
+"a":{"dataObject":"TotW","subDataObject":"","protocol":"modbus_tcp","multiplier":"0.1","logicalNode":"MMXU","measurementType":"Analog","description":"AC Power, Generated = Export, from Inverter","engUnits":"kW","adder":"0","nx-agent-id":"v1.1.5#xxxx","assetType":"INV","subDeviceID":"BLK_001_23},
+"la":0,
+"v":[]}]]
+```
+
+FIND returns class (`"c":{...}`), labels (`"l":{...}`), attributes (`"a":{...}`), and an empty value field (`"v":[]`).
+
+[How to do it in python](./python-examples) 
+
+---
+
+### FETCH - Retrieve Time-Series Data
+
+Fetch actual values for specific time ranges and metrics. Complete documentation [here](https://www.warp10.io/doc/FETCH).
+
+Example query:
+
+```warpscript
+{
+  'token' 'YOUR_READ_TOKEN'
+  'class' 'nx.value'
+  'labels' { 'assetType' 'INV' 'dataObject' 'TotW' }
+  'start' '2026-01-15T12:00:00Z'
+  'end' '2026-01-15T12:00:00Z'
+} FETCH
+```
+Output:
+
+```
+[[{"c":"nx.value",
+"l":{"siteName":"TX_001","deviceModel":"Satcon",".app":"nexalis","deviceID":"01234","dataPoint":"42"},
+"a":{"dataObject":"TotW","subDataObject":"","protocol":"modbus_tcp","multiplier":"0.1","logicalNode":"MMXU","measurementType":"Analog","description":"AC Power, Generated = Export, from Inverter","engUnits":"kW","adder":"0","nx-agent-id":"v1.1.5#xxxx","assetType":"INV","subDeviceID":"BLK_001_23},
+"la":0,
+"v":[[1768438794869000,0,348],[1768438790168000,0,346],[1768438784989000,0,350], ... ,[1768435210217000,0,405],[1768435200214000,0,386]]}]]
+```
+
+Here, each sub-list in the "v" (value) field is a measurement, where the first element is the microseconds unix time, and the last element is the actual value.
+
+[How to do it in python](./python-examples) 
+
+---
+
+Both FIND and FETCH functions support:
+- **Regular expressions** for pattern matching (prefix with `~`)
+- **Multiple filters** on labels and attributes (both passed in the "labels" field)
+
+Additionally, FETCH supports:
+- **Flexible time ranges** with ISO8601 strings or microseconds unix time
+
+---
+
+## Nexalis Custom Macros
+
+Nexalis provides ready-to-use macros that simplify common time-series operations:
+
+- **`@nexalis/scale`** - Apply unit conversions and calibrations
+- **`@nexalis/fetch_trapezoidal_averages`** - Fetch and compute trapezoidal averages for irregularly-sampled data
+
+For detailed examples of using these macros, see the [Nexalis Macros guide](./nexalis-macros).
+
+### Custom Macros
+
+You can also build your own WarpScript macros to encapsulate complex logic and reuse common query patterns across your organization.
+
+---
+
+## API Integration
+
+The Nexalis real-time API can be queried from any tool or programming language that supports HTTP requests. Simply send a POST request with:
+
+- **URL**: Your endpoint (`https://yourcompany.app.nexalis.io/api/v0/exec`)
+- **Headers**: `X-Warp10-Token: YOUR_READ_TOKEN`
+- **Body**: WarpScript code (plain text)
+
+This works seamlessly with cURL, Python, PowerBI, and any other HTTP-capable tool.
+
+---
+
+## Learn More
+
+- **[Nexalis Macros Examples](./real-time-api/nexalis-macros)** - Detailed macro usage and patterns
+- **[Python Integration](./real-time-api/python-examples)** - Build data pipelines with Python
+- **[PowerBI Integration](./real-time-api/powerbi-examples)** - Create live dashboards
+- **Warp10** - [FIND](https://www.warp10.io/doc/FIND) and [FETCH](https://www.warp10.io/doc/FETCH) complete documentations
+
+For API access and support, contact [contact@nexalis.io](mailto:contact@nexalis.io)

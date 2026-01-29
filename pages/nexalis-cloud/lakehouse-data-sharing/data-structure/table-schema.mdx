@@ -3,7 +3,6 @@ title: Table Schema
 sidebar_position: 3
 ---
 
----
 The **Nexalis Table Schema** defines how the data within the tables is structured into columns.
 
 ## Column Groups
@@ -37,15 +36,15 @@ It provides a standardized ontology data model for accessing and analyzing indus
   - in `hf_std`: raw high‑frequency reading  
 - **min, max, count** — `avg_std`; aggregated statistics for each X‑minute interval  
 - **description** — `both`; manufacturer‑provided description  
-- **qualitySource** — `both`; quality indicator  
+- **qualitySource** — `both`; quality indicator from data source
 - **triggerType** — `both`; Nexalis Agent configuration for when to send data  
 - **metaData** — `both`; additional protocol parameters (settings, buffering info)  
 
 ### Timestamps
-- **tsConnector** — `both`; epoch (ms) when collected  
+- **tsConnector** — `both`; timestamp (UTC in ms) when data was collected by Nexalis Agent
 - **dtConnector** — `both`; human‑readable equivalent  
 - **tsReception** — `both`; when sent to cloud  
-- **tsSource** — `both`; timestamp directly from device  
+- **tsSource** — `both`; timestamp directly from data source
 
 ### Unique identifier
 - **uniqueTagID** — `both`; concatenation of key fields → globally unique datapoint ID  
@@ -56,5 +55,5 @@ It provides a standardized ontology data model for accessing and analyzing indus
 
 - **Unstandardized tags** → standardization columns remain empty (`assetType`, `logicalNode`, `dataObject`, `subDataObject`, `engUnits`, `measurementType`).  
 - **Filter standardized only** → use query: `dataObject != null`.  
-- **`gold_<user_name>_avg_std`** → interval configurable per‑agent. Best for trend analysis but does not include booleans/enumerations.  
-- **`gold_<user_name>_hf_std`** → includes booleans/enumerations. Best for real‑time monitoring and troubleshooting.  
+- **`gold_<org_name>_avg_std`** → interval configurable per‑agent. Best for trend analysis but does not include booleans/enumerations.
+- **`gold_<org_name>_hf_std`** → includes booleans/enumerations. Best for real‑time monitoring and troubleshooting.

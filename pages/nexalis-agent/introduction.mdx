@@ -11,7 +11,7 @@ Welcome to the **Nexalis Agent** documentation. This guide explains how to insta
   - the communication parameters required to access those data points.
   - the vendor-provided context information (when available).
 - In addition to forwarding raw data streams, gRPC_kafka **computes averaged data** (e.g., 5-minute averages) before loading.
-- The Agent also provides **local buffering**: if the connection to the cloud is interrupted, data is stored on disk. Once connectivity is restored, the Agent **automatically backfills buffered data, ensuring no information is lost**.
+- The Agent also provides **local buffering**: if the connection to the cloud is interrupted, data is stored on disk. Once connectivity is restored, the Agent **automatically sends buffered data, ensuring no information is lost**.
 
 ---
 
