@@ -138,6 +138,7 @@ Below are the definitions for all available fields in `config_gRPC_kafka.json`.
 - Computes averages only for numeric data types (integer, float). It does not compute averages for non-numeric types such as boolean or string. 
 - Includes min (the smallest value recorded during the interval), max (the largest value recorded during the interval), count (The total number of data points used to calculate the average) in `metaData`.  
 - Uses weighted averages, accounting for the duration each data point is active and with continuity across intervals (the last value from the previous interval is carried over as the initial value for the next interval).
+- Is an optional compute function in Nexalis Agent. Use averagePeriod: "None" to deactivate the average function.
 
 ```json
 {
@@ -199,7 +200,7 @@ The max gRPC message size is 4MB.
 
 > gRPC_kafka checks that all required keys have non-empty values, except for the value key. The “value” key can be empty for tag discovery purposes.
 
-> tsConnector is the number of milliseconds since 1970-01-01 UTC.
+> tsConnector is the number of milliseconds since 1970-01-01 UTC and represents the timestamp when the Nexalis Agent receives the data from the data source.
 
 
 Example of a valid JSON message:

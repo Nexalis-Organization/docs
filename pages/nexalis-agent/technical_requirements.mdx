@@ -38,7 +38,7 @@ The Agent buffers data locally whenever the connection to Nexalis Cloud is inter
   - Uses ~50 bytes per compressed event (includes a safety margin).  
   - Example: for 1,000 events/s with 7 days retention → ~30.24 GB required.  
 
-This buffer guarantees reliable backfill once the cloud connection is restored.
+This buffer guarantees reliable unbuffering once the cloud connection is restored.
 
 #### 2) Log size
 Each **industrial connector** and the **gRPC_kafka** component has configurable log size parameters (rotation, maximum file size, and retention).  
@@ -57,7 +57,7 @@ Disk space for these logs is also reserved at Nexalis Agent startup to prevent d
 
 The Nexalis Agent is designed to operate with **minimal network bandwidth**.  
 
-- **Maximum bandwidth requirement:** approximately **20 kilobits per second**.  
-- This corresponds to the transmission of around **1,000 events per second**.  
+- **Maximum bandwidth requirement:** approximately **160 kilobits per second**.
+- This corresponds to the transmission of around **1,000 samples per second**.
 
 Such efficiency ensures scalable data handling even in environments with **constrained connectivity**.

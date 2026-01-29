@@ -60,7 +60,7 @@ You have **three options** for accessing and analyzing your data. Each addresses
 ### What this guide covers
 
 - **An overview of each access option**, including best use cases and cost considerations.  
-- **A description of the data tables** you will receive (`gold_<user_name>_avg_std` and `gold_<user_name>_hf_std`).
+- **A description of the data tables** you will receive (`gold_<org_name>_avg_std` and `gold_<org_name>_hf_std`).
 - **How to connect via Delta Sharing Databricks‑to‑Databricks**
 - **How to connect via Delta Sharing open protocol**
 - **How to connect to the Nexalis Databricks SQL Warehouse for BI tools and apps**.

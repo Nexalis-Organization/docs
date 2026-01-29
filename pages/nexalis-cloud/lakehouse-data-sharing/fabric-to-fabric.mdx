@@ -57,8 +57,8 @@ Your Fabric organization must have the **"Users can accept external data shares"
 
 Once configured, you will see shortcuts to Nexalis shared tables directly in your Fabric lakehouse under the `Files` directory:
 
-- `gold_<user_name>_avg_std/` — Aggregated time-series data with averages and standard deviations
-- `gold_<user_name>_hf_std/` — High-frequency time-series data in standardized format
+- `gold_<org_name>_avg_std/` — Aggregated time-series data with averages and standard deviations
+- `gold_<org_name>_hf_std/` — High-frequency time-series data in standardized format
 
 These shortcuts behave like native Delta tables and can be queried using:
 - **SQL endpoints** in Fabric
@@ -97,6 +97,17 @@ LIMIT 100;
 
 ---
 
+---
+
+## After setup
+
+After Nexalis completes the configuration, you will see the shared tables directly in your Fabric workspace:
+
+- `gold_<org_name>_avg_std`
+- `gold_<org_name>_hf_std`
+
+---
+
 ## References
 
 - [Microsoft Fabric OneLake shortcuts documentation](https://learn.microsoft.com/en-us/fabric/onelake/onelake-shortcuts)
@@ -105,4 +116,4 @@ LIMIT 100;
 
 ---
 
-**Note:** This uses Microsoft Fabric's native sharing capabilities, not the Delta Sharing protocol. For Databricks environments, see [Databricks-to-Databricks](./databricks-to-databricks) which uses the Delta Sharing protocol.
+**Note:** This uses Microsoft Fabric's native sharing capabilities.

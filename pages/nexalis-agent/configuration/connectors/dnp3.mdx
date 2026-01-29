@@ -57,7 +57,7 @@ Each entry describes either a DNP3 **class** or a set of specific **indices**.
 |---------------|--------|-----------------------------------------------------------------------------|
 | `deviceModel` | string | Device model identifier                                                     |
 | `classID`     | number | DNP3 class ID (0–3)                                                         |
-| `triggerType` | string | When to send data: `changed`, `cyclic-N` (N seconds), or `percentage-N` (N %)|
+| `triggerType` | string | When to send data: `changed` or `cyclic-N` (N seconds)                      |
 | `metaData`    | object | Protocol-specific communication parameters                                  |
 
 #### Optional per-index field
@@ -96,7 +96,7 @@ Each entry describes either a DNP3 **class** or a set of specific **indices**.
         {
             "deviceModel": "dnp3_model",
             "classID": 2,
-            "triggerType": "percentage-5",
+            "triggerType": "cyclic-5",
             "metaData": {
             "cyclicPeriod": 1
             }

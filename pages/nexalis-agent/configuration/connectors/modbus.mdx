@@ -14,7 +14,7 @@ Configuration is JSON‑based, enabling clear, repeatable deployments for both M
 ## Key Features
 
 - **Unified TCP & RTU support** – switch protocols per tag without changing code.
-- **Flexible polling triggers** – send data when registers change, at fixed intervals, or when values shift by a percentage.
+- **Flexible polling triggers** – send data when registers change or at fixed intervals.
 - **Batch grouping by request ID** – reduce bus chatter by bundling registers into shared requests.
 - **Comprehensive logging** – customizable log file location, size rotation, and log levels for easy troubleshooting.
 - **Byte‑order & data‑type handling** – interpret register values correctly with configurable endianness and type definitions.
@@ -47,7 +47,7 @@ Each entry describes one Modbus register to read.
 | `dataPoint`   | string | Register address; may include an optional bit offset (`32-0` for bit 0 at address 33) |
 | `description` | string | Human‑readable description of the register                                          |
 | `unit`        | string | Unit of measurement for the value                                                   |
-| `triggerType` | string | When to send data: `changed`, `cyclic-N` (N seconds), or `percentage-N` (N %)        |
+| `triggerType` | string | When to send data: `changed` or `cyclic-N` (N seconds)      |
 | `commParams`  | object | Protocol-specific communication parameters (see below)                              |
 
 > Note on **dataPoint**: The connector strips any text before the final / in the dataPoint value and uses only the number portion for the register address. This means prefixes (e.g., hr) are optional and serve only as human-readable hints; the register type is taken from commParams.registerType. It is useful to distinguish from modbus registers having the same addresses but on different registerType. 
@@ -129,7 +129,7 @@ Each entry describes one Modbus register to read.
       "dataPoint": "hr/10",
       "description": "Description1",
       "unit": "kWh",
-      "triggerType": "percentage-5",
+      "triggerType": "changed",
       "commParams": {
         "modbusServerID": 3,
         "numberOfRetries": 5,
@@ -190,7 +190,7 @@ Each entry describes one Modbus register to read.
         "dataPoint": "hr/2",
         "description": "Description2",
         "unit": "kWh",
-        "triggerType": "percentage-5",
+        "triggerType": "changed",
         "commParams": {
             "bytesOrder": "ABCD",
             "cyclicPeriod": 1000,
