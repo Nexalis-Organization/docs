@@ -15,7 +15,7 @@ NexalisAgent accepts a series of commands like `start`, `restart`, `status`, `re
 
 ## 2) How to configure Nexalis Agent config file (`config.json`)
 
-`config.json` must be in the same folder as `nexalis_agent.sh`. It lists devices per connector type:
+`config.json` must be in the same folder as `NexalisAgent` executable. It lists devices per connector type:
 
 ```json
 {
@@ -125,7 +125,7 @@ If not configured the default log location will be inside the connector data dir
 ### NexalisAgent Windows commands
 
 The installer adds NexalisAgent to your PATH.
-After running the installer, you can open a new Administrator PowerShell window (after a few seconds) and run 
+After running the installer, you can open a new Administrator PowerShell window (after a few seconds) and run
 
 ```pwsh
 NexalisAgent help
@@ -274,6 +274,16 @@ It does the same for all device models used in config.json and the `gRPC_kafka` 
 This allows you to not restart everything when changing just a configuration.
 However the reload command does not check credentials or certificates or connections for changes.
 
+For Example:
+
+- adding, removing or changing configuration inside config.json will start,stop or restart the appropriate connector.
+- changing JSON content of a device_model will trigger restart for that specific connector.
+- changing opcua credentials in the device model, will trigger restart of the connector.
+- changing gRPC_kafka credentials or any environment variables will not trigger restart.
+- changing connector specific files like certificates will not trigger restart of the connector.
+
+
+
 > A JSON status is printed. The status field indicates whether the operation was successful.
 
 When a configuration is invalid, you will see the error in the error fields.
@@ -302,7 +312,7 @@ Enter the password and then press `Enter` to set the password.
 NexalisAgent gRPC_kafka-sasl-login myusername
 ```
 
-Alternatively, you can set credentials inside the service parameters in regedit 
+Alternatively, you can set credentials inside the service parameters in the Registry Editor.
 NexalisAgentService reads the 2 service parameters.
 
 - KAFKA_SASL_USERNAME
@@ -331,9 +341,10 @@ NexalisAgent service-reset
 
 ####  service-install [ --no-autostart ]
 
-This command is run by the Windows installer and to be restarted at boot.
-It installs the service (it starts at boot with a delay).
-The service will be restarted automatically at boot if --no-autostart is not set.
+This command is run by the Windows installer.
+You do not have to run manually.
+It configure the service and it's permissions.
+Running this command enables the service to be automatically started at boot, except if --no-autostart is set.
 
 ```
 NexalisAgent service-install
@@ -367,7 +378,7 @@ If unconfigured, the default log location will be inside the connector data dire
 
 > For example, for opcua connector the logs will be by default inside `nexalis_agent_volume/connectors/opcua_connector`.
 
-### Docker Linux commands 
+### Docker Linux commands
 
 After configuring `config_docker_launcher.json` you shall run `./docker_launcher.sh`
 
