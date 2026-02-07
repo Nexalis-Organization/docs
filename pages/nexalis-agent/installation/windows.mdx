@@ -1,0 +1,261 @@
+---
+title: "Running Nexalis Agent in Windows"
+---
+
+### Windows install folders and file locations
+
+You’ll receive two installers: NexalisAgent-[VERSION]-win-x64 (for example, NexalisAgent-1.1.6-win-x64) or NexalisAgent-[VERSION]-win-x86 (for example, NexalisAgent-1.1.6-win-x86)
+Run the installer that matches your system architecture (x64 or x86).
+
+In x64 the installer installs the agent, gRPC_kafka and connectors inside `C:\Program Files\Nexalis\NexalisAgent`.
+In x86 the installer installs the agent, gRPC_kafka and connectors inside `C:\Program Files (x86)\Nexalis\NexalisAgent`.
+
+For consistency, the data and logs are written inside `%ProgramData%\Nexalis\NexalisAgent`, usually `C:\ProgramData\Nexalis\NexalisAgent`.
+
+`gRPC_kafka` has its default directory at `%ProgramData%\Nexalis\NexalisAgent\gRPC_kafka`.
+Connectors have their default directory inside `%ProgramData%\Nexalis\NexalisAgent\connectors\`.
+
+> For example, the opcua_connector default directory is `%ProgramData%\Nexalis\NexalisAgent\connectors\opcua_connector`
+
+This directory contains:
+
+- device_models -- configurations
+- certs -- configuration certificates.
+
+The offline database is inside `%ProgramData%\Nexalis\NexalisAgent\gRPC_kafka\persistent_buffer`.
+It is created when gRPC_kafka is configured and running.
+
+You can find the latest NexalisAgentService logs in `%ProgramData%\Nexalis\NexalisAgent\logs\nexalis_agent_service\NexalisAgentService.log`.
+You can configure other logs connection for gRPC_kafka in their respective configurations.
+
+If not configured the default log location will be inside the connector data directory.
+
+> For example, the opcua connector logs will be by default inside `%ProgramData%\Nexalis\NexalisAgent\connectors\opcua_connector`
+
+### NexalisAgent Windows commands
+
+The installer adds NexalisAgent to your PATH.
+After running the installer, you can open a new Administrator PowerShell window (after a few seconds) and run
+
+```pwsh
+NexalisAgent help
+```
+
+```
+Usage: C:\Program Files\Nexalis\NexalisAgent\NexalisAgent.exe <command>
+  help
+      print this text
+  version
+      get current version v1.1.6
+  service-install [ --no-autostart ]
+      Create service (sc create) (Require Admin)
+  service-reset
+      Stop & delete the service (Require Admin)
+  start
+      Start the service (sc start) (Require Admin)
+  restart
+      restart the service (sc stop and sc start) (Require Admin)
+  reload
+      ask service to reload config.json
+  stop
+      Stop the service (sc stop) (Require Admin)
+  authorize-opcda-clsid CLSID
+      Authorize service for DCOM access for CLSID (Require Admin)
+  gRPC_kafka-sasl-login USERNAME set KAFKA_SASL_USERNAME for admin and KAFKA_SASL_PASSWORD from standard input into service parameters (Require Admin)
+```
+
+See [Errors](#7-errors) section if you have an error.
+
+#### version command
+
+Version shows the version of the installed agent.
+
+```pwsh
+NexalisAgent version
+```
+
+```
+NexalisAgent v1.1.6
+```
+
+#### status command
+
+Status allows you to query the current status of the agent/gRPC_kafka and all the connectors and to view the JSON configuration errors from `config.json`, connectors and `gRPC_kafka`.
+
+See [Errors](#7-errors) section if you have an error.
+
+```pwsh
+NexalisAgent status
+```
+
+```json
+{
+    "status": true,
+    "gRPCKafkaStatus": {
+        "connector": {
+            "name": "gRPC_kafka",
+            "deviceModel": "",
+            "communicationAddress": "",
+            "siteName": "",
+            "deviceID": ""
+        },
+        "running": true,
+        "enabled": true,
+        "startedAt": "2026-02-04T19:22:25Z",
+        "nbRestart": 0
+    },
+    "connectorsStatus": [
+        {
+            "connector": {
+                "name": "modbus_connector",
+                "deviceModel": "./device_models/solar_inverter/SolarInverterSimulator/SolarInverterSimulator.json",
+                "communicationAddress": "127.0.0.1:5023",
+                "siteName": "SITE_modbus_2",
+                "deviceID": "4"
+            },
+            "running": false,
+            "enabled": true,
+            "startedAt": "2026-02-04T19:22:45Z",
+            "endedAt": "2026-02-04T19:22:45Z",
+            "nbRestart": 0,
+            "lastExitCode": 127
+        },
+        {
+            "connector": {
+                "name": "modbus_connector",
+                "deviceModel": "./device_models/solar_inverter/SunSpec-PICS-SMA-SBx.x-1SP-US-401_102/SunSpec-PICS-SMA-SBx.x-1SP-US-401_102.json",
+                "communicationAddress": "127.0.0.1:5021",
+                "siteName": "SITE_modbus_1",
+                "deviceID": "2"
+            },
+            "running": false,
+            "enabled": true,
+            "startedAt": "2026-02-04T19:22:45Z",
+            "endedAt": "2026-02-04T19:22:45Z",
+            "nbRestart": 2,
+            "lastExitCode": 127
+        },
+        {
+            "connector": {
+                "name": "dnp3_connector",
+                "deviceModel": "./device_models/cyclic-1.json",
+                "communicationAddress": "127.0.0.1:5025",
+                "siteName": "SITE_dnp3_1",
+                "deviceID": "6"
+            },
+            "running": true,
+            "enabled": true,
+            "startedAt": "2026-02-04T19:22:25Z",
+            "nbRestart": 0
+        }
+    ]
+}
+```
+
+#### start, stop, restart command
+
+```
+NexalisAgent start
+```
+
+```
+NexalisAgent stop
+```
+
+```
+NexalisAgent restart
+```
+
+In Windows, these commands start, stop, and restart the NexalisAgent Windows service.
+The Windows service runs the executable nexalis_agent_service\NexalisAgentService (from Program Files).
+
+> A JSON status is printed. The status field indicates whether the operation was successful.
+
+#### reload command
+
+```
+NexalisAgent reload
+```
+
+Sends a reload request to NexalisAgentService.
+The service compares the new config.json with the running configuration and applies only the necessary changes.
+It does the same for all device models used in config.json and the `gRPC_kafka` JSON config.
+
+This allows you to not restart everything when changing just a configuration.
+However the reload command does not check credentials or certificates or connections for changes.
+
+For Example:
+
+- adding, removing or changing configuration inside config.json will start,stop or restart the appropriate connector.
+- changing JSON content of a device_model will trigger restart for that specific connector.
+- changing opcua credentials in the device model, will trigger restart of the connector.
+- changing gRPC_kafka credentials or any environment variables will not trigger restart.
+- changing connector specific files like certificates will not trigger restart of the connector.
+
+
+
+> A JSON status is printed. The status field indicates whether the operation was successful.
+
+When a configuration is invalid, you will see the error in the error fields.
+```
+{
+ "status": false,
+ "errornum": 1,
+ "errorMessage": "connectors/modbus_connector/device_models/SolarInverterSimulator.json: [json.exception.parse_error.101] parse error at line 1, column 2: syntax error while parsing value - invalid literal; last read: '[#'",
+ "connector": {
+  "name": "modbus_connector",
+  "deviceModel": "./device_models/solar_inverter/SolarInverterSimulator/SolarInverterSimulator.json",
+  "communicationAddress": "127.0.0.1:5022",
+  "siteName": "SITE_modbus_2",
+  "deviceID": "3"
+ }
+}
+```
+
+#### gRPC_kafka-sasl-login command
+
+You can update the gRPC_kafka credentials with this command.
+
+Enter the password and then press `Enter` to set the password.
+
+```
+NexalisAgent gRPC_kafka-sasl-login myusername
+```
+
+Alternatively, you can set credentials inside the service parameters in the Registry Editor.
+NexalisAgentService reads the 2 service parameters.
+
+- KAFKA_SASL_USERNAME
+- KAFKA_SASL_PASSWORD
+
+#### authorize-opcda-clsid command
+
+`opcda32_connector` and `opcda64_connector` require service permission
+to access DCOM and to communicate with the configured interface.
+
+You can run
+```
+NexalisAgent authorize-opcda-clsid CLSID
+```
+You must replace CLSID with the OPC DA DCOM CLSID you used to connect.
+
+#### service-reset command
+
+This command is run by the Windows uninstaller.
+It uninstalls the service.
+Preferably it should be stopped first.
+The service will not be restarted automatically
+```
+NexalisAgent service-reset
+```
+
+####  service-install [ --no-autostart ]
+
+This command is run by the Windows installer.
+You do not have to run manually.
+It configure the service and it's permissions.
+Running this command enables the service to be automatically started at boot, except if --no-autostart is set.
+
+```
+NexalisAgent service-install
+```

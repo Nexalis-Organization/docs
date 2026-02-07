@@ -1,0 +1,93 @@
+---
+title: "Main services"
+---
+
+This section explains how to configure, install, and operate the Nexalis Agent launcher on Windows, Docker and Linux build. 
+
+It is designed for technical users (e.g., SCADA engineers) who want to set up the Nexalis Agent into their environment.
+
+## 1) Overview: NexalisAgent and NexalisAgentService
+
+`NexalisAgent` is a command-line control utility.
+`NexalisAgentService` is the long-running service responsible for starting, monitoring, and restarting gRPC_kafka and all configured connectors.
+
+The agent logs are always inside `logs/NexalisAgentService/`.
+NexalisAgent accepts a series of commands like `start`, `restart`, `status`, `reload`.
+
+## 2) How to configure Nexalis Agent config file (`config.json`)
+
+`config.json` must be in the same folder as `NexalisAgent` executable. It lists devices per connector type:
+
+```json
+{
+  "first_connector_type": [
+    {
+      "deviceModel": "./connector/device_models/model.json",
+      "communicationAddress": "IP:PORT or SERIAL:PORT",
+      "siteName": "siteName",
+      "deviceID": "unique-device-id"
+    }
+  ],
+  "other_connector_type": [
+    { "...": "..." },
+    { "...": "..." }
+  ]
+}
+```
+
+**OPC UA example with two clients**
+```json
+{
+  "opcua_connector": [
+    {
+      "deviceModel": "./device_models/OPCUA_Solar_SITENAME.json",
+      "communicationAddress": "opc.tcp://[IP]:[PORT]",
+      "siteName": "SITENAME",
+      "deviceID": "OPCUA_Solar_SITENAME"
+    },
+    {
+      "deviceModel": "./device_models/OPCUA_BESS_SITENAME.json",
+      "communicationAddress": "opc.tcp://[IP]:[PORT]",
+      "siteName": "SITENAME",
+      "deviceID": "OPCUA_BESS_SITENAME"
+    }
+  ]
+}
+```
+
+**Mixed example (2 Modbus clients + 1 DNP3 client)**
+```json
+{
+  "modbus_connector": [
+    {
+      "deviceModel": "./device_models/inverter1.json",
+      "communicationAddress": "localhost:50001",
+      "siteName": "My site",
+      "deviceID": "Inverter_1"
+    },
+    {
+      "deviceModel": "./device_models/inverter2.json",
+      "communicationAddress": "localhost:50002",
+      "siteName": "My site",
+      "deviceID": "Inverter_2"
+    }
+  ],
+  "dnp3_connector": [
+    {
+      "deviceModel": "./device_models/outstation.json",
+      "communicationAddress": "localhost:50003",
+      "siteName": "My site",
+      "deviceID": "Outstation"
+    }
+  ]
+}
+```
+
+> **gRPC_kafka only:** use an **empty** `config.json` (`{}`) to start without connectors.
+
+### Fields required per device
+
+- `deviceModel` — path to the connector’s device-specific config (absolute or relative to the **connector executable**)
+- `communicationAddress` — IP:port or serial; formats depend on connector
+- `siteName` — groups devices by physical site
+- `deviceID` — unique identifier within your fleet

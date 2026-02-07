@@ -1,0 +1,207 @@
+---
+title: "Errors"
+---
+
+### Windows Path
+
+In Windows if you have:
+
+```
+NexalisAgent : The term 'NexalisAgent' is not recognized as the name of a cmdlet, function, script file, or operable program. Check
+the spelling of the name, or if a path was included, verify that the path is correct and try again.
+At line:1 char:1
++ NexalisAgent
++ ~~~~~~
+    + CategoryInfo          : ObjectNotFound: (NexalisAgent:String) [], CommandNotFoundException
+    + FullyQualifiedErrorId : CommandNotFoundException
+```
+
+Some of your administrator Active Directory rules/policies may reject it.
+In that case you can run it with its full Path in Administrator PowerShell:
+
+In x86_64
+```pwsh
+& "C:\Program Files\Nexalis\NexalisAgent\NexalisAgent.exe" help
+```
+
+In x86
+```pwsh
+& "C:\Program Files (x86)\Nexalis\NexalisAgent\NexalisAgent.exe" help
+```
+
+### Linux Path
+
+In Linux if you have
+```
+sh: command not found: NexalisAgent
+```
+
+You need to add it in your PATH.
+If it is in the current directory (./NexalisAgent --version is working).
+
+```sh
+export PATH="$PATH:$PWD"
+```
+You can then run it anywhere (as Root).
+
+### Windows Permissions errors
+
+if you have this permissions error in Windows.
+
+```
+{ "status": false, "errornum": 2, "errorMessage": "status requires an elevated (Administrator) shell." }
+```
+
+You have to run the command in an Administrator PowerShell.
+Right click on the PowerShell icon in your task bar and select `Run as Administrator`.
+Starting or Stopping Windows services require administrator privileges.
+
+
+### Linux Permission error
+
+```
+{ "status": false, "errornum": 2, "errorMessage": "stop requires root" }
+```
+If you try to run `NexalisAgent start`,  `NexalisAgent stop`, `NexalisAgent restart`.
+Root permissions are required to start/stop/restart the systemd service.
+`status` and `reload` do not require root user but usually need to be run as the nexalis user.
+
+### Linux systemd not available
+
+In Linux. If you have this error.
+```
+{ "status": false, "errornum": 10, "errorMessage": "systemd is not available" }
+```
+if you are using the nexalis Docker image.
+then you must pass the socket location using --socket-path /tmp/nexalis.sock
+otherwise NexalisAgent assume a systemd socket.
+
+If you are not using Docker, and have this error. you can still use a service.
+For classic init/openrc you can simply add a service, and use the following command inside `NexalisAgent service-run --socket-path /tmp/nexalis.sock`.
+then you must reuse the same `--socket-path` in commands.
+
+### config.json JSON configuration error
+
+If `config.json` has a JSON error, then the details will be shown in status as a single error message
+```
+{
+ "status": false,
+ "errornum": 1,
+ "errorMessage": "[json.exception.parse_error.101] parse error at line 1, column 1: syntax error while parsing value - invalid literal; last read: '#'",
+ "connectorsStatus": []
+}
+```
+
+### config_gRPC_kafka.json JSON configuration error
+
+If `gRPC_kafka/config_gRPC_kafka.json` has a JSON error, then the details will be shown in status as a single error message
+
+```
+{
+    "status": false,
+    "gRPCKafkaStatus": {
+        "connector": {
+            "name": "gRPC_kafka",
+            "siteName": "",
+            "deviceID": ""
+        },
+        "running": false,
+        "enabled": false,
+        "errorMessage": "gRPC_kafka\\config_gRPC_kafka.json: [json.exception.parse_error.101] parse error at line 1, column 1: syntax error while parsing value - invalid literal; last read: '#'"
+    },
+    "connectorsStatus": []
+}
+```
+
+### connectors JSON configuration error
+
+Whenever a connector has a JSON configuration error.
+The connector will not be started. instead the details will appear in connectorsStatus.
+In this example the agent is stopped.
+
+```json
+{
+    "status": false,
+    "gRPCKafkaStatus": {
+        "connector": {
+            "name": "gRPC_kafka",
+            "deviceModel": "",
+            "communicationAddress": "",
+            "siteName": "",
+            "deviceID": ""
+        },
+        "running": false,
+        "enabled": true,
+        "startedAt": "2026-02-05T14:03:28Z",
+        "endedAt": "2026-02-05T14:03:29Z",
+        "nbRestart": 0,
+        "lastExitCode": 0
+    },
+    "connectorsStatus": [
+        {
+            "connector": {
+                "name": "modbus_connector",
+                "deviceModel": "./device_models/solar_inverter/SolarInverterSimulator/SolarInverterSimulator.json",
+                "communicationAddress": "127.0.0.1:5022",
+                "siteName": "SITE_modbus_2",
+                "deviceID": "3"
+            },
+            "running": false,
+            "enabled": false,
+            "errorMessage": "connectors/modbus_connector/device_models/solar_inverter/SolarInverterSimulator/SolarInverterSimulator.json: [json.exception.parse_error.101] parse error at line 1, column 2: syntax error while parsing value - invalid literal; last read: '[#'"
+        },
+		{
+            "connector": {
+                "name": "opcua_connector",
+                "deviceModel": "./device_models/test.json",
+                "communicationAddress": "opc.tcp://localhost:4840/server",
+                "siteName": "SITE_opcua_1",
+                "deviceID": "7"
+            },
+            "running": false,
+            "enabled": true,
+            "startedAt": "2026-02-05T14:03:28Z",
+            "endedAt": "2026-02-05T14:03:29Z",
+            "nbRestart": 0,
+            "lastExitCode": 0
+        }
+    ]
+}
+```
+
+### Windows: SC Manager is not Available
+
+```
+{ \"status\": false, \"errornum\": 10, \"errorMessage\": \"SC Manager is not available\" }
+```
+
+This error indicates we do not have access to the Windows service manager SC Manager.
+Access is required to check whether the NexalisAgent service is available.
+
+### Windows: service is installed/could not install service.
+
+When trying to run service-install. This error indicates the service is already installed.
+If it occurs in a window while running the installer or uninstaller.
+It means the service could not be removed.
+
+```
+{ "status": false, "errornum": 16, "errorMessage": "service is installed" }
+```
+
+If installation fails. Please contact support if you see this error.
+Usually, the cause can be a restriction from Active Directory configuration/policy or from the remote access software used like AnyDesk.
+The error usually contains the Windows error message.
+
+```
+{ "status": false, "errornum": 40, "errorMessage": "could not install service ..." }
+```
+
+### service is not running
+
+That error indicates that the service is not running.
+It occurs when running the stop command while the service is not running.
+
+### service running
+
+That error indicates that the service is running.
+It occurs when running the stop command while the service is running.
