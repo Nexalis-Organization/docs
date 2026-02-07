@@ -1,4 +1,6 @@
-## Docker deployment
+---
+title: "Running Nexalis Agent with Docker"
+---
 
 ### Unzip Nexalis Agent docker
 
@@ -13,7 +15,19 @@ You’ll get:
 - `nexalis_agent_volume/` — shared host directory for **configs** and **logs**
 - `VERSION`
 
+### Install Docker
+```bash
+sudo apt update -y && sudo apt upgrade -y
+sudo apt install -y docker.io
 
+sudo systemctl start docker
+sudo systemctl enable docker
+
+sudo usermod -aG docker $USER
+newgrp docker
+docker load -i nexalis_agent_build_docker.tar
+docker images
+```
 
 **Image filesystem (inside container, `/app`)** mirrors the build: Agent scripts, `gRPC_kafka/`, `connectors/`, `logs/`, `config.json`.  
 **Host volume (`nexalis_agent_volume/`)** holds your editable configs and the logs:
@@ -34,21 +48,7 @@ nexalis_agent_volume/
    └─ connectors/
 ```
 
-### 2.2 Install Docker & Configure auto-start & load image (Debian example)
-```bash
-sudo apt update -y && sudo apt upgrade -y
-sudo apt install -y docker.io
-
-sudo systemctl start docker
-sudo systemctl enable docker
-
-sudo usermod -aG docker $USER
-newgrp docker
-docker load -i nexalis_agent_build_docker.tar
-docker images
-```
-
-### 2.3 Configure Nexalis Agent
+### Configure Nexalis Agent
 
 In `./nexalis_agent_volume`, configure:
 - `config.json` (Nexalis Agent configuration)
@@ -58,7 +58,7 @@ In `./nexalis_agent_volume`, configure:
 
 Then edit **`config_docker_launcher.json`**. Use **exactly one** of the following valid JSON examples (remove any comments; JSON does not support `#` comments).
 
-### 2.4 Configure `config_docker_launcher.json`
+### Configure `config_docker_launcher.json`
 
 #### Option A — SASL_SSL (username/password)
 ```json
@@ -86,7 +86,7 @@ Then edit **`config_docker_launcher.json`**. Use **exactly one** of the followin
   jq empty config_docker_launcher.json
   ```
 
-### 2.5 Launch container
+### Launch container
 
 ```bash
 ./docker_launcher.sh
@@ -94,26 +94,9 @@ Then edit **`config_docker_launcher.json`**. Use **exactly one** of the followin
 
 The script validates prerequisites (`docker`, `jq`), checks the JSON config file, and ensures the volume path and image exist before starting the container.
 
-It runs a `docker run` equivalent with:
+It runs a `docker run` equivalent, ensuring the container runs in the background, restarts automatically if stopped, and mounts all required configs, certificates, and logs from the host volume into the container.
 
-- `-d` — run the container in **detached mode**
-- `--restart always` — container restarts automatically on boot or after a crash
-- `${env_args[@]}` — environment variables such as `KAFKA_SASL_USERNAME` and `KAFKA_SASL_PASSWORD` (if SASL authentication is used)
-- `--name "$NAME_DOCKER_CONTAINER"` — the container name
-- `-v` volume mounts for configuration, device models, certificates, and logs:
-  - `config.json` (Agent configuration)
-  - `connectors/opcua_connector/certs`
-  - `connectors/opcua_connector/device_models`
-  - `connectors/modbus_connector/device_models`
-  - `connectors/dnp3_connector/device_models`
-  - `gRPC_kafka/certs`
-  - `gRPC_kafka/config_gRPC_kafka.json`
-  - `logs/`
-- The container image (default: `nexalis_agent_build_docker:latest`)
-
-This ensures the container runs in the background, restarts automatically if stopped, and mounts all required configs, certificates, and logs from the host volume into the container.
-
-### 2.6 Operate container
+### Operate container
 ```bash
 # Show containers
 docker ps -a
@@ -132,32 +115,9 @@ docker exec -it nexalis_agent_container /bin/bash
 sudo docker exec -it nexalis_agent_container /bin/bash
 ```
 
----
-
-
-
-
-
-
-PAST VERSION
-
-====== TO BE MERGED =======
-
-NEW VERSION
-
-
-
-
-
-
-
-
-
-## 4) Running Agent in Linux Docker
-
 ### Docker Linux install folders and file locations
 
-Inside Docker the agent is installed in `/usr/local/nexalis-agent`.
+Inside Docker, the Nexalis Agent is installed in `/usr/local/nexalis-agent`.
 You can find the Dockerfile inside the image at `/usr/local/nexalis-agent/Dockerfile`
 The data directory inside the container is `/app`.
 When running with `./docker_launcher.sh` then `/app` will be mounted to nexalis_agent_volume.
@@ -183,10 +143,7 @@ If unconfigured, the default log location will be inside the connector data dire
 
 ### Docker Linux commands
 
-After configuring `config_docker_launcher.json` you shall run `./docker_launcher.sh`
-
-Inside the container (for example with Docker exec), you can run the following commands.
-
+After configuring `config_docker_launcher.json` and running `./docker_launcher.sh` (see steps above), inside the container (for example with Docker exec), you can run the following commands.
 
 ```sh
 /usr/local/nexalis-agent/NexalisAgent help
@@ -271,7 +228,7 @@ Reload works the same as in Windows. See [reload](#reload-command)
 /usr/local/nexalis-agent/NexalisAgent reload --socket-path /tmp/nexalis.sock
 ```
 
-## 5) Running Agent in Linux Balena
+## Running Agent in Linux Balena
 
 As in Docker, the executables are installed in `/usr/local/nexalis-agent`.
 
