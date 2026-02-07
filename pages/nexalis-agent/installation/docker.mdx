@@ -1,0 +1,290 @@
+## Docker deployment
+
+### Unzip Nexalis Agent docker
+
+Once you receive nexalis_agent_build_docker.zip, unzip it:
+```bash
+unzip nexalis_agent_build_docker.zip
+```
+You’ll get:
+- `config_docker_launcher.json` — launch parameters (env, volume path, container name)
+- `docker_launcher.sh` — helper script to run the container
+- `nexalis_agent_build_docker.tar` — the Docker image
+- `nexalis_agent_volume/` — shared host directory for **configs** and **logs**
+- `VERSION`
+
+
+
+**Image filesystem (inside container, `/app`)** mirrors the build: Agent scripts, `gRPC_kafka/`, `connectors/`, `logs/`, `config.json`.  
+**Host volume (`nexalis_agent_volume/`)** holds your editable configs and the logs:
+```
+nexalis_agent_volume/
+├─ config.json
+├─ gRPC_kafka/
+│  ├─ certs/
+│  └─ config_gRPC_kafka.json
+│  └─ config_gRPC_kafka_mTLS.json
+├─ connectors/
+│  └─ opcua_connector/
+│     ├─ device_models/
+│     │  └─ OPCUA_template_config.json
+│     └─ certs/
+└─ logs/
+   ├─ gRPC_kafka/
+   └─ connectors/
+```
+
+### 2.2 Install Docker & Configure auto-start & load image (Debian example)
+```bash
+sudo apt update -y && sudo apt upgrade -y
+sudo apt install -y docker.io
+
+sudo systemctl start docker
+sudo systemctl enable docker
+
+sudo usermod -aG docker $USER
+newgrp docker
+docker load -i nexalis_agent_build_docker.tar
+docker images
+```
+
+### 2.3 Configure Nexalis Agent
+
+In `./nexalis_agent_volume`, configure:
+- `config.json` (Nexalis Agent configuration)
+- Connector device models and certificates (e.g., `connectors/opcua_connector/device_models`, `connectors/opcua_connector/certs`, etc.)
+- `gRPC_kafka/config_gRPC_kafka.json` 
+- `logs/` (empty folder; log files will be created by the container)
+
+Then edit **`config_docker_launcher.json`**. Use **exactly one** of the following valid JSON examples (remove any comments; JSON does not support `#` comments).
+
+### 2.4 Configure `config_docker_launcher.json`
+
+#### Option A — SASL_SSL (username/password)
+```json
+{
+  "KAFKA_SASL_USERNAME": "your_kafka_username",
+  "KAFKA_SASL_PASSWORD": "your_kafka_password",
+  "NEXALIS_VOLUME_PATH": "./nexalis_agent_volume",
+  "NAME_DOCKER_CONTAINER": "nexalis_agent_container_staging"
+}
+```
+
+#### Option B — mTLS (no SASL credentials)
+```json
+{
+  "NEXALIS_VOLUME_PATH": "./nexalis_agent_volume",
+  "NAME_DOCKER_CONTAINER": "nexalis_agent_container"
+}
+```
+
+**Notes**
+- Pick a unique `NAME_DOCKER_CONTAINER` per environment (e.g., staging vs. production).
+- You may use an **absolute path** for `NEXALIS_VOLUME_PATH`.
+- Validate the file before running:
+  ```bash
+  jq empty config_docker_launcher.json
+  ```
+
+### 2.5 Launch container
+
+```bash
+./docker_launcher.sh
+```
+
+The script validates prerequisites (`docker`, `jq`), checks the JSON config file, and ensures the volume path and image exist before starting the container.
+
+It runs a `docker run` equivalent with:
+
+- `-d` — run the container in **detached mode**
+- `--restart always` — container restarts automatically on boot or after a crash
+- `${env_args[@]}` — environment variables such as `KAFKA_SASL_USERNAME` and `KAFKA_SASL_PASSWORD` (if SASL authentication is used)
+- `--name "$NAME_DOCKER_CONTAINER"` — the container name
+- `-v` volume mounts for configuration, device models, certificates, and logs:
+  - `config.json` (Agent configuration)
+  - `connectors/opcua_connector/certs`
+  - `connectors/opcua_connector/device_models`
+  - `connectors/modbus_connector/device_models`
+  - `connectors/dnp3_connector/device_models`
+  - `gRPC_kafka/certs`
+  - `gRPC_kafka/config_gRPC_kafka.json`
+  - `logs/`
+- The container image (default: `nexalis_agent_build_docker:latest`)
+
+This ensures the container runs in the background, restarts automatically if stopped, and mounts all required configs, certificates, and logs from the host volume into the container.
+
+### 2.6 Operate container
+```bash
+# Show containers
+docker ps -a
+
+# Stop / remove container
+docker stop <id|name>
+docker rm   <id|name>
+
+# Remove image
+docker rmi  <imageID|imageName>
+
+# Exec into container (root at /app)
+docker exec -it nexalis_agent_container /bin/bash
+
+# Enter the docker container
+sudo docker exec -it nexalis_agent_container /bin/bash
+```
+
+---
+
+
+
+
+
+
+PAST VERSION
+
+====== TO BE MERGED =======
+
+NEW VERSION
+
+
+
+
+
+
+
+
+
+## 4) Running Agent in Linux Docker
+
+### Docker Linux install folders and file locations
+
+Inside Docker the agent is installed in `/usr/local/nexalis-agent`.
+You can find the Dockerfile inside the image at `/usr/local/nexalis-agent/Dockerfile`
+The data directory inside the container is `/app`.
+When running with `./docker_launcher.sh` then `/app` will be mounted to nexalis_agent_volume.
+
+`gRPC_kafka` has its default directory inside `nexalis_agent_volume/gRPC_kafka` and connectors have their default directory inside `nexalis_agent_volume/connectors`.
+
+> For example, the `opcua_connector` default directory is `nexalis_agent_volume/connectors/opcua_connector`.
+This is necessary to have a writable directory on a volume.
+
+It contains:
+
+- device_models for configurations
+- certs for configuration certificates
+
+The offline database is inside `nexalis_agent_volume/gRPC_kafka/persistent_buffer`.
+It is created when gRPC_kafka is configured and running.
+
+You can find the latest NexalisAgentService logs at `nexalis_agent_volume/logs/nexalis_agent_service/NexalisAgentService.log`
+You can configure other logs connection for gRPC_kafka in their respective configurations.
+If unconfigured, the default log location will be inside the connector data directory.
+
+> For example, for opcua connector the logs will be by default inside `nexalis_agent_volume/connectors/opcua_connector`.
+
+### Docker Linux commands
+
+After configuring `config_docker_launcher.json` you shall run `./docker_launcher.sh`
+
+Inside the container (for example with Docker exec), you can run the following commands.
+
+
+```sh
+/usr/local/nexalis-agent/NexalisAgent help
+```
+
+```
+Usage: /usr/local/nexalis-agent/NexalisAgent <command>
+  help
+        print this text
+  version
+        get current version v1.1.6
+  service-install [--noautostart][--user USER][--data-directory DIR]        Install/enable/start systemd socket+service. run as user (default to nexalis)
+  service-reset
+        Stop/disable and remove units from /etc/systemd/system
+  start [--socket-path SOCKETPATH]
+        systemctl start service (requires root) or send start signal by SOCKETPATH
+  restart [--socket-path SOCKETPATH]
+        systemctl restart service  (requires root) or send restart signal in SOCKETPATH
+  reload [--socket-path SOCKETPATH]
+        have service reload config.json by service socket  SOCKETPATH
+  status [--socket-path SOCKETPATH]
+        get service status by service socket or by SOCKETPATH
+  stop [--socket-path SOCKETPATH]
+        stop service using systemctl (requires root) or by socket if provided
+  service-run  --socket-path SOCKETPATH
+        run NexalisAgentService directly. (without systemd)
+  gRPC_kafka-sasl-login USERNAME  set KAFKA_SASL_USERNAME for admin and KAFKA_SASL_PASSWORD from standard input inside /etc/NexalisEnviron (requires root)
+```
+
+> Inside Docker, you should always run commands with `--socket-path SOCKETPATH`.
+
+`gRPC_kafka-sasl-login` command is not available in Docker.
+You must use `config_docker_launcher.json`.
+
+`service-install`/`service-reset` are not available inside container because there is no need for system service,
+The Docker daemon already manages restarts and acts as a service.
+
+> Running those commands will complain about systemd not installed or running.
+
+#### sending stop command
+
+```sh
+/usr/local/nexalis-agent/NexalisAgent stop --socket-path /tmp/nexalis.sock
+```
+Sending the stop command to the socket stops all connectors and gRPC_kafka.
+It doesn't stop the container.
+See the [Errors](#7-errors) section if you have an error.
+
+#### sending start command
+
+```sh
+/usr/local/nexalis-agent/NexalisAgent start --socket-path /tmp/nexalis.sock
+```
+
+Sending the start command to the socket starts all connectors and gRPC_kafka if they were stopped.
+It doesn't stop the container.
+See the [Errors](#7-errors) section if you have an error.
+
+#### sending restart command
+
+```sh
+/usr/local/nexalis-agent/NexalisAgent restart --socket-path /tmp/nexalis.sock
+```
+
+Sending the restart command to the socket restarts all connectors and gRPC_kafka.
+It doesn't stop the container.
+See the [Errors](#7-errors) section if you have an error.
+
+#### sending status command
+
+```sh
+/usr/local/nexalis-agent/NexalisAgent status --socket-path /tmp/nexalis.sock
+```
+Sending the status command to the socket shows current status from all connectors and gRPC_kafka.
+Status works the same as in Windows. See [status](#status-command).
+
+#### sending reload command
+
+Reload works the same as in Windows. See [reload](#reload-command)
+
+```sh
+/usr/local/nexalis-agent/NexalisAgent reload --socket-path /tmp/nexalis.sock
+```
+
+## 5) Running Agent in Linux Balena
+
+As in Docker, the executables are installed in `/usr/local/nexalis-agent`.
+
+With Balena, you must set up Kafka username/password in the Balena web UI.
+
+- KAFKA_SASL_USERNAME
+- KAFKA_SASL_PASSWORD
+
+In Balena as in Docker, you should use the `--socket-path SOCKETPATH` option.
+
+In the Balena UI you can open a shell inside the container.
+By selecting the `agent` container, you can then run the same commands as described in the Docker section.
+
+Unlike Docker, Balena starts the agent unconfigured on first boot.
+You can transfer files using FTP using the provided guide.
+The default directory is the `/app` directory.

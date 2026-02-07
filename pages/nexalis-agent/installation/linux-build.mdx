@@ -1,0 +1,97 @@
+## Running Agent in Linux with systemd
+
+### Installation
+
+When installing on Linux without Docker you can choose the install and data folder.
+They can be the same.
+You can choose the directory from service-install options.
+
+The agent must run as the `nexalis` user.
+Create or configure this user beforehand.
+
+Unpack & prerequisites
+```bash
+unzip nexalis_agent_build.zip
+tar -xvf nexalis_agent_build.tar
+```
+Directory layout of Nexalis Agent
+
+```
+nexalis_agent_build/
+├─ CHANGELOG.md
+├─ LICENSE.txt
+├─ VERSION
+├─ config.json                  # Nexalis Agent config template
+├─ logs/
+├─ NexalisAgent                 # CLI (service-install / status / reload / start / stop / restart)
+├─ gRPC_kafka/
+│  ├─ gRPC_kafka                # executable
+│  ├─ config_gRPC_kafka.json    # gRPC_kafka config template
+│  └─ certs/                    # required by mTLS
+├─ connectors/
+│  ├─ opcua_connector/
+│  │  ├─ opcua_connector        # executable
+│  │  ├─ device_models/
+│  │  │  ├─ model_server1.json
+│  │  │  ├─ model_server2.json
+│  │  │  └─ model_server3.json
+│  │  └─ certs/                 # if protocol/security requires
+│  │  └─ licenses/
+│  └─ other_connector/
+└─ nexalis_agent_service/
+   └─ NexalisAgentService       # systemd service executable (launched by systemd)
+   └─ licenses/
+```
+
+Populate **device_models**, **certs**, and edit **config.json** (Nexalis Agent) and **config_gRPC_kafka.json** (cloud uplink). 
+See the other sections for detailed explanations.
+
+After extracting the archive, run commands as the `nexalis` user.
+
+You can install service with:
+
+```sh
+./NexalisAgent service-install
+```
+
+> by default it will use same directory for data and executable.
+
+> A JSON status is printed. The status field indicates whether the operation was successful.
+
+If you want to change those directories or reinstall from a different location, you can uninstall the service with
+
+```sh
+./NexalisAgent service-reset
+```
+> A JSON status is printed. The status field indicates whether the operation was successful.
+
+### sending status command
+
+```sh
+./NexalisAgent status
+```
+
+> A JSON status is printed. The status field indicates whether the operation was successful.
+
+Sending status command to the socket, status get current status from all connectors and gRPC_kafka.
+Status works the same as in Windows. See [status](#status-command)
+
+### sending reload command
+
+```sh
+./NexalisAgent reload
+```
+Reload works the same as in Windows. See [reload](#reload-command)
+A JSON status is printed.
+The status field indicates whether the operation was successful.
+
+### start, stop, restart
+
+With `--socket-path`, the command is sent to the service socket.
+Without `--socket-path`, `start`, `stop`, and `restart` control the systemd service.
+
+The Linux service runs the executable `nexalis_agent_service\NexalisAgentService`.
+
+A JSON status is printed.
+The status field indicates whether the operation was successful.
+
