@@ -13,14 +13,17 @@ Configuration is JSON-based, enabling clear, repeatable deployments for DNP3 env
 - **DNP3 client (Master) support** – communicate with one or more outstations.  
 - **Class-based scanning** – mirror data by DNP3 class (0–3) instead of single indices.  
 - **Flexible configuration** – per-class or per-index configuration available.  
+- **Human-readable descriptions** – optionally attach descriptions to forwarded data points.  
 - **Comprehensive logging** – log rotation, file templates, and log levels for easy troubleshooting.  
 
 ---
 
 ## 2. Configuration
 
-The DNP3 connector is configured through a JSON file composed of a `logSettings` object and a `tagConfiguration` array.  
-Each element of the array defines one DNP3 class or index group to poll and forward.
+The DNP3 connector is configured through a JSON file composed of:
+- a `logSettings` object (optional),  
+- a `tagConfiguration` array (required),  
+- and an optional `tagDescriptions` object.
 
 There are **two ways to configure tags** in the connector:
 
@@ -33,7 +36,7 @@ There are **two ways to configure tags** in the connector:
 2. **Per-index configuration**  
    - A more granular approach.  
    - You can specify a list of exact indices (tags) to poll within a class.  
-   - Only those data points are read and forwarded.  
+   - DNP3 class polls still retrieve all values/events in the class, but the connector limits what the connector **forwards** to the cloud.
    - Useful for optimizing bandwidth or focusing on a subset of values.
 
 ---
@@ -56,15 +59,71 @@ Each entry describes either a DNP3 **class** or a set of specific **indices**.
 | Field         | Type   | Description                                                                 |
 |---------------|--------|-----------------------------------------------------------------------------|
 | `deviceModel` | string | Device model identifier                                                     |
-| `classID`     | number | DNP3 class ID (0–3)                                                         |
-| `triggerType` | string | When to send data: `changed` or `cyclic-N` (N seconds)                      |
-| `metaData`    | object | Protocol-specific communication parameters                                  |
+| `classID`     | number | DNP3 **event class** ID (0–3). This is the class priority group, not an address. |
+| `triggerType` | string | Cloud publish policy: `changed` or `cyclic-N` (publish every N seconds).    |
+| `metaData`    | object | Protocol-specific settings for the DNP3 connector (see below).              |
+| `metaData.cyclicPeriod` | number | **Scan interval** in seconds: how often the connector polls the DNP3 server for this class. |
+
+Note (important):
+- triggerType: "cyclic-N" controls how often values are sent to Nexalis Cloud (publish frequency).
+- metaData.cyclicPeriod controls how often the connector scans/polls the DNP3 outstation for updates in that class (read/scan frequency).
+- These two can be different: you may poll frequently (low cyclicPeriod) but publish less frequently (cyclic-N), or publish frequently while polling less often (not recommended if you expect fast-changing signals).
 
 #### Optional per-index field
 
 | Field       | Type     | Description                                              |
 |-------------|----------|----------------------------------------------------------|
-| `dataPoints`| string[] | List of specific data points (e.g. `"Binary/1"`, `"Analog/3"`) |
+| `dataPoints`| string[] | List of specific data points to send to Nexalis Cloud (e.g. `"Binary/1"`, `"Analog/3"`) |
+
+#### Important notes about `classID` vs data point address / index
+
+- `classID` is the **event class** (priority group), not a data point address.  
+- A data point address/index is represented in the **data point key** (e.g., `Binary/2` = Binary type at address 2).  
+- **Multiple addresses / indexes** can be published in any class (1/2/3).  
+- A **single address / index** can be published in **multiple classes**; it is still the *same data point / index* (same type + address), but appears in different event classes (different priority).
+
+---
+
+### `tagDescriptions`
+
+`tagDescriptions` is an optional object that lets you configure human-readable descriptions for data points.
+
+It also acts as a **forwarding allow-list** when present:
+- If `tagDescriptions` is **not** provided: the connector forwards data according to `tagConfiguration` and (optionally) `dataPoints`. The `description` field will remain default/empty unless provided elsewhere.
+- If `tagDescriptions` **is** provided: the connector forwards **only** data points that match an entry in `tagDescriptions`.
+
+#### Format
+
+```json
+"tagDescriptions": {
+  "<key>": "<description string>"
+}
+```
+
+#### Supported keys
+
+You can define descriptions at two different granularities:
+
+1. **Full data point key (type + address)**  
+   - Format: `"<Type>/<Address>"`  
+   - Examples: `"Binary/2"`, `"Analog/2"`, `"Binary/4257"`
+
+2. **Address-only key**  
+   - Format: `"<Address>"`  
+   - Example: `"2"`  
+   - Applies to any type at that address (e.g., `Binary/2`, `Analog/2`, etc.)
+
+#### Matching / precedence
+
+When a data point is forwarded, the connector resolves its description as follows:
+
+1. If an exact match exists for `<Type>/<Address>` (e.g., `Binary/2`) → use it.
+2. Else if a match exists for `<Address>` (e.g., `2`) → use it.
+3. Else:
+   - If `tagDescriptions` is present → the data point is **not forwarded** (allow-list behavior).
+   - If `tagDescriptions` is absent → the data point may still be forwarded (depending on tagConfiguration), but without a configured description.
+
+---
 
 ### Example 1: Class-based configuration
 
@@ -113,7 +172,7 @@ Each entry describes either a DNP3 **class** or a set of specific **indices**.
 }
 ```
 
-### Example 2: Per-index configuration
+### Example 2: Per-index configuration (forward only a subset)
 
 ```json
 {
@@ -125,7 +184,7 @@ Each entry describes either a DNP3 **class** or a set of specific **indices**.
     },
     "tagConfiguration": [
         {
-            "deviceModel": "DNP3 device model",
+            "deviceModel": "dnp3_model",
             "classID": 1,
             "triggerType": "changed",
             "metaData": {
@@ -141,7 +200,7 @@ Each entry describes either a DNP3 **class** or a set of specific **indices**.
             ]
         },
         {
-            "deviceModel": "DNP3 device model",
+            "deviceModel": "dnp3_model",
             "classID": 2,
             "triggerType": "changed",
             "metaData": {
@@ -157,7 +216,7 @@ Each entry describes either a DNP3 **class** or a set of specific **indices**.
             ]
         },
         {
-            "deviceModel": "DNP3 device model",
+            "deviceModel": "dnp3_model",
             "classID": 3,
             "triggerType": "changed",
             "metaData": {
@@ -175,6 +234,43 @@ Each entry describes either a DNP3 **class** or a set of specific **indices**.
     ]
 }
 
+```
+
+### Example 3: Configure `tagDescriptions` (descriptions + allow-list)
+
+This example:
+- defines three class configurations (1/2/3),
+- and forwards **only** data points that match `tagDescriptions`,
+- with description resolution by datapoint-first, then address-only.
+
+```json
+{
+  "tagConfiguration": [
+    {
+      "deviceModel": "DNP3 device model",
+      "classID": 1,
+      "triggerType": "changed",
+      "metaData": { "cyclicPeriod": 1 }
+    },
+    {
+      "deviceModel": "DNP3 device model",
+      "classID": 2,
+      "triggerType": "changed",
+      "metaData": { "cyclicPeriod": 1 }
+    },
+    {
+      "deviceModel": "DNP3 device model",
+      "classID": 3,
+      "triggerType": "changed",
+      "metaData": { "cyclicPeriod": 1 }
+    }
+  ],
+  "tagDescriptions": {
+    "Binary/2": "Description of Binary/2, e.g., alarm",
+    "2": "Description of index 2, e.g., meter active power",
+    "Analog/3": "Description of Analog/3, e.g., meter reactive power"
+  }
+}
 ```
 
 ---
