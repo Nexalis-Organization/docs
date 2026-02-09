@@ -218,8 +218,8 @@ let
     BodyText = Text.Combine(
         {
             "{ 'token' '" & EscapeWarpString(token) & "'",
-            " 'start' '" & EscapeWarpString(Text.From(start)) & "'",
-            " 'end' '"   & EscapeWarpString(Text.From(end))   & "'",
+            " 'start' " & start,
+            " 'end' " & end,
             " 'bucket_size' " & bucket_size,
             " 'labels' " & labels & " }",
             "@nexalis/fetch_trapezoidal_averages"
@@ -335,13 +335,14 @@ in
 
 1. Create a new blank query
 2. Go to **Home** → **Advanced Editor**
-3. Paste the following example code:
+3. **Option A:** Paste the following example code to use **ISO8601 dates**:
+(Note the single quotes encapsulated in double quotes. You're passing string objects).
 
 ```m
 let
     Token = NexalisApiReadToken,
-    Start = "2026-01-01T00:00:00Z",
-    End   = "2026-01-01T04:00:00Z",
+    Start = "'2026-01-01T00:00:00Z'",
+    End   = "'2026-01-01T04:00:00Z'",
     BucketSize  = "30",
     Labels = "{ 'dataPoint' 'ns=2;s=[APX1]/PV/BLK-22/INV-15/VAL_P_KW' }",
 
@@ -350,9 +351,44 @@ in
     Result
 ```
 
-4. Click **Done** and then **Refresh** to execute the query
+3. **Option B:** If you want "start" and "end" to use **unix microsecods timestamps**:
+(Note the absence of single quotes. You're passing LONG objects).
 
+```m
+# Replace Start and End, keep the rest as is
+    Start = "1767225600000000",
+    End   = "1767240000000000",
+```
+
+
+3. **Option C:** If you want to use **rolling time windows**:
+(Note the absence of single quotes. The function NOW returns the current unix timestamp)
+
+```m
+# Replace Start and End, keep the rest as is
+    Start = "NOW 4 h -",    # 4 hours in the past. m: minutes, d: day
+    End   = "NOW",
+```
+
+
+
+4. Click **Done**
+
+### Step 4: Create the connection
+
+1. Click **Edit Credentials**
+2. In the "Anonymous" connection method, scroll through the urls list to select "https://yourcompany.app.nexalis.io/api/v0/exec"
+3. Then click **Connect**
+
+Your time-series data should now appear in Power BI.
 You can now modify the parameters (`Start`, `End`, `BucketSize`, `Labels`) to query different time ranges and data points.
+
+> 💡 **Tip:** You can use filters and regular expressions in the `Labels` parameter to query multiple data points at once. See [Filtering Data](./real-time-api#filtering-data) for pattern matching examples.
+
+### Step 5: Rename the Query and Save
+
+1. We recommend renaming the query to describe the data (e.g. TurbinesActivePowerAverages)
+2. Click Close & Apply in the top-left corner
 
 ---
 
