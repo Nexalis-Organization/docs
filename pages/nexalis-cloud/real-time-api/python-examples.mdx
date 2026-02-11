@@ -48,87 +48,154 @@ print(data)
 
 The response is a JSON array containing GTS (Geo Time Series) objects with labels, attributes, and time-value pairs.
 
+> 💡 **Tip:** Learn how to use filters and regular expressions in the `labels` parameter to target specific data points. See [Filtering Data](./real-time-api#filtering-data) for examples.
+
 
 ---
 
-## Convert to Pandas DataFrame and Save as Delta Table
-
-Once you have the JSON response, you can convert it to a pandas DataFrame and save it as a Delta Lake table:
+## Basic Query - Fetch trapezoidal averages
 
 ```python
 import requests
-import pandas as pd
-from deltalake import write_deltalake
 
 # Configuration
-WARP10_URL = "https://yourcompany.app.nexalis.io/api/v0/exec""
+WARP10_URL = "https://yourcompany.app.nexalis.io/api/v0/exec"
 READ_TOKEN = "YOUR_READ_TOKEN"
 
-# WarpScript query
+# WarpScript query using the trapezoidal averages macro
 warpscript = f"""
 {{
   'token' '{READ_TOKEN}'
-  'class' 'nx.value'
   'labels' {{ 'assetType' 'INV' 'dataObject' 'TotW' }}
   'start' '2026-01-15T00:00:00Z'
-  'end' '2026-01-15T01:00:00Z'
-}} FETCH
-@nexalis/scale
+  'end' '2026-01-15T04:00:00Z'
+  'bucket_size' 15
+}} @nexalis/fetch_trapezoidal_averages
 """
 
-# Execute query and get JSON
+# Execute query
 response = requests.post(
     WARP10_URL,
-    headers={
+    headers={{
         'X-Warp10-Token': READ_TOKEN,
         'Content-Type': 'text/plain; charset=UTF-8'
-    },
+    }},
     data=warpscript
 )
+
+# Get JSON response
+data = response.json()
+print(data)
+```
+
+This macro automatically fetches the data, scales it, and computes trapezoidal averages for the specified time range, returning averaged values (here 15-min averages) instead of raw data points.
+
+> 💡 **Tip:** Learn how to use filters and regular expressions in the `labels` parameter to target specific data points. See [Filtering Data](./real-time-api#filtering-data) for examples.
+
+
+---
+
+## Convert JSON response to Pandas DataFrame
+
+Once you have the JSON response, you can parse it and convert it to a pandas DataFrame:
+
+```python
+import pandas as pd
+
+# We assume here that you already have the http response
+# response = requests.post( ... )
+data = response.json()
 
 gts_list = response.json()[0]
 
 # Convert to DataFrame
 rows = []
-for gts in gts_list:
-    labels = gts.get('l', {})
-    attributes = gts.get('a', {})
-    values = gts.get('v', [])
-    
-    for v in values:
-        timestamp_us = v[0]
-        value = v[-1]
-        
-        rows.append({
-            'siteName': labels.get('siteName', ''),
-            'deviceModel': labels.get('deviceModel', ''),
-            'deviceID': labels.get('deviceID', ''),
-            'dataPoint': labels.get('dataPoint', ''),
-            'description': attributes.get('description', ''),
-            'timestamp': pd.to_datetime(timestamp_us, unit='us', utc=True),
-            'value': value,
-            'engUnits': attributes.get('engUnits', ''),
-            'subDeviceID': attributes.get('subDeviceID', ''),
-            'assetType': labels.get('assetType', ''),
-            'logicalNode': attributes.get('logicalNode', ''),
-            'dataObject': labels.get('dataObject', ''),
-            'subDataObject': attributes.get('subDataObject', ''),
-            'measurementType': attributes.get('measurementType', ''),
-            'multiplier': attributes.get('multiplier', ''),
-            'adder': attributes.get('adder', ''),
-            'protocol': attributes.get('protocol', ''),
-            'nx-agent-id': attributes.get('nx-agent-id', ''),
-        })
 
-df = pd.DataFrame(rows)
+# Loop through the list of GTS
+for gts in gts_list:
+    labels = gts.get("l", {})
+    attributes = gts.get("a", {})
+
+    # Loop through the values/timestamps for each GTS
+    for ts_us, *_, val in gts.get("v", []):
+        rows.append((
+        labels.get("siteName",""),
+        labels.get("deviceModel",""),
+        labels.get("deviceID",""),
+        labels.get("dataPoint",""),
+        attributes.get("description",""),
+        ts_us,
+        val,
+        attributes.get("engUnits",""),
+        attributes.get("subDeviceID",""),
+        attributes.get("assetType",""),
+        attributes.get("logicalNode",""),
+        attributes.get("dataObject",""),
+        attributes.get("subDataObject",""),
+        attributes.get("measurementType",""),
+        attributes.get("multiplier",""),
+        attributes.get("adder",""),
+        attributes.get("protocol","")
+        ))
+
+# Create a dataframe and set specify its columns
+df = pd.DataFrame(rows, columns=[
+"siteName","deviceModel","deviceID","dataPoint","description",
+"timestamp","value","engUnits","subDeviceID","assetType",
+"logicalNode","dataObject","subDataObject","measurementType",
+"multiplier","adder","protocol","nx-agent-id"
+])
+
+# Convert unix microseconds time to date/time
+df["timestamp"] = pd.to_datetime(df["timestamp"], unit="us", utc=True)
+
+print(df.head())
+```
+> ⚠️ **Warning:** Even if we're only displaying a few rows of the dataframe (df.head()), your machine is loading it all to memory (pd.DataFrame(rows, columns[...])). It won't be a problem for small dataframes but it can be slow for larger ones.
+
+This approach parses the GTS format into a flat DataFrame structure, making it easy to analyze with pandas or save to Delta Lake for further processing.
+
+
+## Create Plot: Values = f(Time)
+
+Here is a short snippet to create a plot with matplotlib. Here we're plotting values as a function of time, grouping by "subDeviceID".
+
+```python
+import matplotlib.pyplot as plt
+
+# We assume here that you already have a pandas DataFrame 'df'
+# with at least the columns 'value', 'timestamp', 'subDeviceID'
+
+plt.figure(figsize=(12, 6))
+ 
+fig, ax = plt.subplots(figsize=(12, 6))
+ 
+g = df.sort_values("timestamp").groupby("subDeviceID")
+ 
+g.plot(x="timestamp", y="value", ax=ax, legend=False)
+ 
+ax.legend(ax.get_lines(), g.groups.keys(), title="Legend")
+ 
+ax.set_title("Value over time by subDeviceID")
+ax.set_xlabel("Timestamp (UTC)")
+ax.set_ylabel("Value")
+ax.grid(True)
+plt.show()
+```
+
+
+## Save as Delta table
+
+```python
+from deltalake import write_deltalake, DeltaTable
+
+# We assume here that you already have a pandas DataFrame 'df'
+
 print(df.head())
 
-# Save as Delta table
 write_deltalake('./tmp/nexalis_data', df, mode='append')
 print("Data saved to Delta table!")
 ```
-
-This approach parses the GTS format into a flat DataFrame structure, making it easy to analyze with pandas or save to Delta Lake for further processing.
 
 ---
 

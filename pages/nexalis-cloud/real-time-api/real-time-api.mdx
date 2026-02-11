@@ -39,6 +39,40 @@ X-Warp10-Token: YOUR_READ_TOKEN
 
 ---
 
+## Data Structure
+
+A tag is stored as a **Geo Time Series (GTS)**. Each GTS is uniquely identified across all your data with its **labels**, namely:
+
+- `siteName` - site where the device is located
+- `deviceModel` - manufacturer and model
+- `deviceID` - unique identifier of the device
+- `dataPoint` - device‑specific identifier (e.g., Modbus register, OPC UA tag)
+
+Each GTS also has **attributes** which add context and describe a tag, such as:
+
+- `description` - manufacturer‑provided description
+- `protocol` - communication protocol used
+
+### Standardized Tags
+
+Nexalis standardizes some tags by contextualizing and translating them to the **Nexalis data model**, which is based on IEC 61850. Standardized tags will have additional attribute columns:
+
+- `assetType` - standardized device type (e.g., Solar inverter, Storage inverter, Meteo station, Meter, Wind turbine, etc.)
+- `subDeviceID` - distinguishes devices when connected via proxy/gateway
+- `logicalNode` - standardized function type (e.g., MMDC: DC Measurements)
+- `dataObject` - standardized tag (e.g., PhV: phase voltage)
+- `subDataObject` - finer breakdown (e.g., phsA: phase A)
+- `engUnits` - standardized engineering units
+- `multiplier` - scaling multiplier for unit conversion (from scada unit to Nexalis `engUnits`)
+- `adder` - scaling offset for unit conversion (from scada unit to Nexalis `engUnits`)
+- `measurementType` - Analog or Discrete
+
+<Note>
+**Field Availability**: Nexalis API only returns non-empty labels and attributes. While labels are always present for identification, standardized attributes (such as `assetType`, `logicalNode`, `dataObject`) are only included for tags that have been mapped to the Nexalis data model. Additionally, unit-related attributes (`engUnits`, `adder`, `multiplier`) are typically omitted for discrete measurement types, as these data points generally do not have a unit.
+</Note>
+
+---
+
 ## Core Query Functions
 
 The API uses WarpScript, a stack-based language for time-series operations. Two main functions are available:
@@ -83,8 +117,8 @@ Example query:
   'token' 'YOUR_READ_TOKEN'
   'class' 'nx.value'
   'labels' { 'assetType' 'INV' 'dataObject' 'TotW' }
-  'start' '2026-01-15T12:00:00Z'
-  'end' '2026-01-15T12:00:00Z'
+  'start' '2026-01-15T00:00:00Z'
+  'end' '2026-01-15T01:00:00Z'
 } FETCH
 ```
 Output:
@@ -97,7 +131,7 @@ Output:
 "v":[[1768438794869000,0,348],[1768438790168000,0,346],[1768438784989000,0,350], ... ,[1768435210217000,0,405],[1768435200214000,0,386]]}]]
 ```
 
-Here, each sub-list in the "v" (value) field is a measurement, where the first element is the microseconds unix time, and the last element is the actual value.
+Here, each sub-list in the "v" (value) field is a measurement, where the first element is the microseconds unix timestamp, and the last element is the actual value.
 
 [How to do it in python](./python-examples) 
 
@@ -124,6 +158,57 @@ For detailed examples of using these macros, see the [Nexalis Macros guide](./ne
 ### Custom Macros
 
 You can also build your own WarpScript macros to encapsulate complex logic and reuse common query patterns across your organization.
+
+---
+
+## Filtering Data
+
+The `labels` parameter in both FIND and FETCH queries accepts filters on both labels and attributes, allowing you to precisely target the data you need.
+
+### Basic Filtering
+
+Filter by exact matches on any label or attribute field:
+
+```warpscript
+{
+  'token' 'YOUR_READ_TOKEN'
+  'class' 'nx.value'
+  'labels' { 
+    'siteName' 'TX_001'
+    'assetType' 'INV'
+    'dataObject' 'TotW'
+  }
+} FIND
+```
+
+### Regular Expression Filtering
+
+Prefix filter values with `~` to use regular expressions for pattern matching:
+
+```warpscript
+{
+  'token' 'YOUR_READ_TOKEN'
+  'class' 'nx.value'
+  'labels' { 
+    'siteName' '~TX_.*'           // Match any site starting with TX_
+    'deviceID' '~INV-(1|2|3)'     // Match INV-1, INV-2, or INV-3
+    'dataObject' '~(.*W$|.*Tmp.*)'         // Match any dataObject ending with W or containing Tmp
+  }
+} FIND
+```
+
+### Common Regex Patterns
+
+| Pattern | Description | Example |
+|---------|-------------|---------|
+| `~.*` | Match anything (wildcard) | `'siteName' '~.*'` |
+| `~^TX_` | Starts with "TX_" | `'siteName' '~^TX_'` |
+| `~.*_001$` | Ends with "_001" | `'deviceID' '~.*_001$'` |
+| `~(INV\|METER)` | Match multiple values | `'assetType' '~(INV\|METER)'` |
+
+<Note>
+Remember to escape special regex characters when needed. The tilde (`~`) prefix indicates that the value should be interpreted as a regular expression rather than an exact string match.
+</Note>
 
 ---
 
