@@ -14,15 +14,15 @@ Learn how to query Nexalis Cloud's real-time API using Python to fetch time-seri
 import requests
 
 # Configuration
-WARP10_URL = "https://yourcompany.app.nexalis.io/api/v0/exec"
+ENDPOINT = "https://yourcompany.app.nexalis.io/api/v0/exec"
 READ_TOKEN = "YOUR_READ_TOKEN"
 
-# WarpScript query
-warpscript = f"""
+# API query
+query = f"""
 {{
   'token' '{READ_TOKEN}'
   'class' 'nx.value'
-  'labels' {{ 'assetType' 'INV' 'dataObject' 'TotW' }}
+  'labels' {{ 'siteName' 'TX01' 'assetType' 'INV' 'dataObject' 'TotW' }}
   'start' '2026-01-15T00:00:00Z'
   'end' '2026-01-15T01:00:00Z'
 }} FETCH
@@ -31,12 +31,9 @@ warpscript = f"""
 
 # Execute query
 response = requests.post(
-    WARP10_URL,
-    headers={
-        'X-Warp10-Token': READ_TOKEN,
-        'Content-Type': 'text/plain; charset=UTF-8'
-    },
-    data=warpscript
+    ENDPOINT,
+    headers={'Content-Type': 'text/plain; charset=UTF-8'},
+    data=query
 )
 
 # Get JSON response
@@ -59,14 +56,14 @@ The response is a JSON array containing GTS (Geo Time Series) objects with label
 import requests
 
 # Configuration
-WARP10_URL = "https://yourcompany.app.nexalis.io/api/v0/exec"
+ENDPOINT = "https://yourcompany.app.nexalis.io/api/v0/exec"
 READ_TOKEN = "YOUR_READ_TOKEN"
 
-# WarpScript query using the trapezoidal averages macro
-warpscript = f"""
+# API query using the trapezoidal averages macro
+query = f"""
 {{
   'token' '{READ_TOKEN}'
-  'labels' {{ 'assetType' 'INV' 'dataObject' 'TotW' }}
+  'labels' {{ 'siteName' 'TX01' 'assetType' 'INV' 'dataObject' 'TotW' }}
   'start' '2026-01-15T00:00:00Z'
   'end' '2026-01-15T04:00:00Z'
   'bucket_size' 15
@@ -75,12 +72,9 @@ warpscript = f"""
 
 # Execute query
 response = requests.post(
-    WARP10_URL,
-    headers={{
-        'X-Warp10-Token': READ_TOKEN,
-        'Content-Type': 'text/plain; charset=UTF-8'
-    }},
-    data=warpscript
+    ENDPOINT,
+    headers={'Content-Type': 'text/plain; charset=UTF-8'},
+    data=query
 )
 
 # Get JSON response
@@ -143,7 +137,7 @@ df = pd.DataFrame(rows, columns=[
 "siteName","deviceModel","deviceID","dataPoint","description",
 "timestamp","value","engUnits","subDeviceID","assetType",
 "logicalNode","dataObject","subDataObject","measurementType",
-"multiplier","adder","protocol","nx-agent-id"
+"multiplier","adder","protocol"
 ])
 
 # Convert unix microseconds time to date/time
