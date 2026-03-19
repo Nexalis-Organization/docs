@@ -17,7 +17,7 @@ OneLake shortcuts allow you to access data stored in Nexalis' Fabric lakehouse d
 
 ## How It Works
 
-Nexalis uses Microsoft Fabric's **External Data Share** feature to create OneLake shortcuts in your workspace. These shortcuts point directly to Delta tables in Nexalis' lakehouse, providing real-time access without data duplication.
+Nexalis uses Microsoft Fabric's **External Data Share** feature to create OneLake shortcuts in your workspace. These shortcuts point directly to Delta tables in Nexalis' lakehouse, providing real-time access with no recipient-side data copy or duplicate storage.
 
 ## Required Information
 
@@ -57,8 +57,8 @@ Your Fabric organization must have the **"Users can accept external data shares"
 
 Once configured, you will see shortcuts to Nexalis shared tables directly in your Fabric lakehouse under the `Files` directory:
 
-- `gold_<org_name>_avg_std/` — Aggregated time-series data with averages and standard deviations
-- `gold_<org_name>_hf_std/` — High-frequency time-series data in standardized format
+- `nexalis_<org_name>_analog_Xminavg/` — Aggregated time-series data
+- `nexalis_<org_name>_discrete/` — High-frequency time-series data in standardized format
 
 These shortcuts behave like native Delta tables and can be queried using:
 - **SQL endpoints** in Fabric
@@ -77,9 +77,8 @@ SELECT
     deviceID,
     dataPoint,
     timestamp,
-    avg_value,
-    std_value
-FROM gold_yourcompany_avg_std
+    avg_value
+FROM nexalis_clientname_analog_xminavg
 WHERE siteName = 'site_A'
     AND timestamp >= '2025-01-01'
 ORDER BY timestamp DESC
@@ -103,8 +102,8 @@ LIMIT 100;
 
 After Nexalis completes the configuration, you will see the shared tables directly in your Fabric workspace:
 
-- `gold_<org_name>_avg_std`
-- `gold_<org_name>_hf_std`
+- `nexalis_<org_name>_analog_Xminavg`
+- `nexalis_<org_name>_discrete`
 
 ---
 

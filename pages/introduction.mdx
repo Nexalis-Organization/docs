@@ -9,21 +9,22 @@ We unify fragmented operational data inside an operator into a trusted operation
 The diagram below illustrates how **Nexalis Agent** and **Nexalis Cloud** work together to create an open, secure, and interoperable industrial data platform:
 
 {/* Diagram */}
-<img src="/images/nexalis-platform-architecture.png" alt="Nexalis Platform" style={{ maxWidth: "100%" }} />
+<img src="/images/nexalis-platform-architecture-v2.png" alt="Nexalis Platform" style={{ maxWidth: "100%" }} />
 
 ---
 
 ## 🌐 Nexalis Cloud
 **Nexalis Cloud** is a secure, scalable environment that ingests and standardizes industrial signals into a shared operational reality, then governs how that reality is shared across stakeholders—enabling cross-organization coordination and applications on top.
 
-- **High-frequency ingestion**: Supports second-level (≈1s) time-series data.
+- **High-frequency ingestion**: Second-level (≈1s) time-series data.
 - **Near real-time availability**: Data is available via API within ~5 seconds from extraction at the Nexalis Agent.
-- **AI-Based Transformation**: Unifies complex and proprietary vendor-specific data into a unified model.  
-- **Data Orchestration**: Automates workflows, error handling, and optimization.  
-- **Storage**: Secure storage for raw and standardized data.  
-- **Visualization**: Full visibility into the health of the Nexalis Platform.  
-- **Sharing**: Powerful APIs for advanced analytics, business intelligence, and AI applications.  
+- **Data contextualization**: AI Agent that unifies complex, proprietary vendor-specific data into a unified model; this output is what Nexalis calls **Standardized data**.
+- **Zero-touch Onboarding**: Automation of Nexalis Agent deployments
+- **Data Compute & Storage**: Computes and stores raw and standardized data.
+- **Catalog / Trending / Events**: UI to visualize and analyze data.
+- **Sharing Raw & Aggregated Data**: Shares data to any applications and environments (i.e., lakehouse providers, ISVs, and custom applications)
 - **Security**: Encryption at rest and in transit, role-based access control and regular audits.  
+- **Business Insight Copilot**: AI Agent answering prompts on industrial data processed by Nexalis.
 
 ---
 

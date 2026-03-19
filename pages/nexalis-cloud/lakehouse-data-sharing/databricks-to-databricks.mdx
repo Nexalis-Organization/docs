@@ -2,6 +2,8 @@
 
 The **Databricks‑to‑Databricks Delta Sharing protocol** enables seamless sharing of datasets between Nexalis and your own Databricks workspace.
 
+Nexalis uses **zero-copy sharing** at the lakehouse layer, so recipients query the same shared data reality without creating duplicate storage copies in their workspace.
+
 ---
 
 ## Recipient Sharing Identifier
@@ -35,8 +37,10 @@ Once obtained, send this identifier to your **Nexalis account manager** or suppo
 
 After Nexalis completes the configuration, you will see the shared tables directly in your Databricks workspace:
 
-- `gold_<org_name>_avg_std`
-- `gold_<org_name>_hf_std`
+- `nexalis_<org_name>_analog_Xminavg`
+- `nexalis_<org_name>_discrete`
+
+You can query these tables directly from your Databricks workspace as shared data products, with no ingestion pipeline required on the recipient side.
 
 ---
 
