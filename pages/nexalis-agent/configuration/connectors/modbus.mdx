@@ -23,7 +23,25 @@ Configuration is JSON‑based, enabling clear, repeatable deployments for both M
 
 ## 2. Configuration
 
-The Modbus connector is configured through a JSON file composed of a `logSettings` object and a `tagConfiguration` array. Each element of the array defines one register to poll and forward to the gRPC pipeline.
+The Modbus connector is configured through a JSON file composed of:
+- a `logSettings` object (optional),
+- an `msDelay` value (optional),
+- a `tagConfiguration` array (required).
+
+Each element of `tagConfiguration` defines one register to poll and forward to the gRPC pipeline.
+
+### Top-level fields
+
+| Field              | Type   | Required | Description                                                                 |
+|--------------------|--------|----------|-----------------------------------------------------------------------------|
+| `logSettings`      | object | No       | Logging configuration (see below)                                           |
+| `msDelay`          | number | No       | Delay between each Modbus request, in milliseconds. Default: `10`. Minimum effective value: `10`. |
+| `tagConfiguration` | array  | Yes      | List of register definitions                                                 |
+
+> If `msDelay` is not provided, the connector uses `10` ms.  
+> If `msDelay` is below `10`, it is automatically clamped to `10` ms.
+
+> Backward compatibility: the legacy configuration format (root JSON array of tags) is still accepted. In that legacy format, `msDelay` is not available.
 
 ### `logSettings`
 
@@ -86,6 +104,7 @@ Each entry describes one Modbus register to read.
     "logFileMaxFiles": 3,
     "logLevel": "debug"
   },
+  "msDelay": 10,
   "tagConfiguration": [
     {
       "deviceModel": "tcp_model",
@@ -162,6 +181,7 @@ Each entry describes one Modbus register to read.
     "logFileMaxFiles": 3,
     "logLevel": "debug"
   },
+  "msDelay": 10,
   "tagConfiguration": [
     {
         "deviceModel": "rtu_model",
