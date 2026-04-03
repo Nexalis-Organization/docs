@@ -1,0 +1,475 @@
+---
+title: Guide - SQL Connector
+sidebar_position: 5
+---
+
+This guide explains how to configure the SQL connector for Nexalis Agent on Linux and Windows.
+
+The SQL connector reads data from SQL databases through ODBC and forwards messages to `gRPC_kafka`.
+
+## 1. What the connector needs
+
+To use the SQL connector you need:
+
+- A SQL database reachable from the machine running Nexalis Agent.
+- An ODBC driver installed for that database.
+- A SQL connector configuration file.
+- Nexalis Agent launcher configured to start the connector.
+
+The connector supports two kinds of data mappings:
+
+- `timeseries`: table rows converted into one or more time series datapoints.
+- `events`: table rows converted into event messages.
+
+## 2. Configuration file structure
+
+A SQL connector config file contains:
+
+```json
+{
+  "driver": {},
+  "deviceModel": "SqlDevice",
+  "dbTimeZone": "UTC",
+  "dbLocale": "C",
+  "pollPeriod": 1,
+  "backFillPeriod": 86400,
+  "ambiguousBackFillPeriod": 7200,
+  "chunkLimit": 1000,
+  "timeseries": [],
+  "events": []
+}
+```
+
+Main fields:
+
+- `driver`: ODBC connection parameters.
+- `deviceModel`: value sent in Nexalis messages.
+- `dbTimeZone`: default timezone for timestamps if a table does not define its own `timeZone`.
+- `dbLocale`: default locale for timestamp parsing if a table does not define its own `locale`.
+- `pollPeriod`: polling interval in seconds.
+- `backFillPeriod`: interval in seconds for retrying missed data.
+- `ambiguousBackFillPeriod`: retry interval in seconds for ambiguous timestamps such as DST overlaps.
+- `chunkLimit`: maximum number of rows read in one polling pass.
+- `timeseries`: list of time series table mappings.
+- `events`: list of event table mappings.
+
+## 3. Linux driver examples
+
+These are the Linux driver libraries used by the repository templates and tests.
+
+### SQLite
+
+```json
+{
+  "driver": {
+    "DRIVER": "${{ drivers }}/lib/libsqlite3odbc.so",
+    "Timeout": "200"
+  }
+}
+```
+
+### PostgreSQL
+
+```json
+{
+  "driver": {
+    "DRIVER": "${{ drivers }}/lib/psqlodbcw.so",
+    "Port": "${{ PGPORT }}",
+    "Database": "${{ PGDATABASE }}",
+    "Uid": "${{ PGUSER }}",
+    "Pwd": "${{ PGPASSWORD }}",
+    "Timeout": "200"
+  }
+}
+```
+
+### MariaDB / MySQL
+
+```json
+{
+  "driver": {
+    "DRIVER": "${{ drivers }}/lib/libmaodbc.so",
+    "Port": "${{ MYSQL_PORT }}",
+    "Database": "${{ MYSQL_DATABASE }}",
+    "User": "${{ MYSQL_USER }}",
+    "Password": "${{ MYSQL_PASSWORD }}",
+    "Option": "3",
+    "Timeout": "200"
+  }
+}
+```
+
+### SQL Server
+
+```json
+{
+  "driver": {
+    "DRIVER": "${{ drivers }}/lib/libtdsodbc.so",
+    "SERVER": "${{ MSSQL_HOST }}",
+    "PORT": "${{ MSSQL_PORT }}",
+    "Database": "${{ MSSQL_DATABASE }}",
+    "UID": "${{ MSSQL_USER }}",
+    "PWD": "${{ MSSQL_PASSWORD }}",
+    "Timeout": "200"
+  }
+}
+```
+
+Notes:
+
+- `${{ drivers }}` is resolved by the connector to the SQL driver directory.
+- `${{ NAME }}` placeholders are replaced from environment variables visible to the connector.
+- On Linux, the connector uses the ODBC manager installed for the agent environment.
+
+## 4. Windows configuration examples
+
+On Windows, the connector uses the system ODBC stack. The JSON format is the same.
+
+The simplest approach on Windows is usually to configure a DSN in ODBC Data Source Administrator and reference it in the connector config.
+
+### Windows example using a DSN
+
+```json
+{
+  "driver": {
+    "DSN": "PlantSql",
+    "Uid": "sql_user",
+    "Pwd": "sql_password",
+    "Timeout": "200"
+  },
+  "deviceModel": "PlantSqlWindows",
+  "dbTimeZone": "UTC",
+  "timeseries": [],
+  "events": []
+}
+```
+
+### Windows example using direct connection fields
+
+```json
+{
+  "driver": {
+    "DRIVER": "Your Windows ODBC Driver Name",
+    "SERVER": "127.0.0.1",
+    "PORT": "1433",
+    "Database": "plant_db",
+    "UID": "sql_user",
+    "PWD": "sql_password",
+    "Timeout": "200"
+  }
+}
+```
+
+Use the exact driver name installed on the Windows machine.
+
+## 5. Time series configuration example
+
+Example for reading one table as time series data:
+
+```json
+{
+  "driver": {
+    "DRIVER": "${{ drivers }}/lib/libsqlite3odbc.so",
+    "Timeout": "200"
+  },
+  "deviceModel": "Sqlite1",
+  "dbTimeZone": "America/Los_Angeles",
+  "pollPeriod": 1,
+  "chunkLimit": 1000,
+  "timeseries": [
+    {
+      "tables": ["turbine_1_10min_data"],
+      "settings": {
+        "timestampColumn": "PCTimeStamp",
+        "timestampFormat": "%m/%d/%Y %T",
+        "timeZone": "America/Los_Angeles",
+        "period": "10min",
+        "columns": [
+          {
+            "dataPoint": "Gen_RPM_Avg",
+            "description": "Generator RPM",
+            "meta": {
+              "min": "Gen_RPM_Min",
+              "max": "Gen_RPM_Max",
+              "std": "Gen_RPM_Std"
+            }
+          },
+          {
+            "dataPoint": "Gen_Phase1_Temp_Avg"
+          },
+          {
+            "dataPoint": "Gen_Phase2_Temp_Avg"
+          }
+        ]
+      }
+    }
+  ],
+  "events": []
+}
+```
+
+Explanation:
+
+- `tables`: source table names.
+- `timestampColumn`: column containing the timestamp.
+- `timestampFormat`: format used when timestamps are stored as text.
+- `timeZone`: timezone used to interpret the timestamp.
+- `period`: label kept in the config for the dataset.
+- `columns`: output datapoints.
+- `meta`: extra columns attached as metadata to the datapoint.
+
+## 6. Event configuration example
+
+Example for reading one table as events:
+
+```json
+{
+  "driver": {
+    "DRIVER": "${{ drivers }}/lib/libsqlite3odbc.so",
+    "Timeout": "200"
+  },
+  "deviceModel": "Sqlite1",
+  "dbTimeZone": "America/Los_Angeles",
+  "timeseries": [],
+  "events": [
+    {
+      "tables": ["turbines_events_data"],
+      "settings": {
+        "timestampColumn": "TimeDetected",
+        "timestampFormat": "%F %T",
+        "timeZone": "America/Los_Angeles",
+        "dataPointColumns": ["UnitTitle"],
+        "dataPointSuffix": ".event",
+        "descriptionColumns": ["EventCodeText", "Remark"],
+        "valueColumn": ["EventCodeNumber"]
+      }
+    }
+  ]
+}
+```
+
+Explanation:
+
+- `dataPointColumns`: columns combined to create the datapoint name.
+- `dataPointSuffix`: suffix appended to the datapoint name.
+- `descriptionColumns`: columns combined into the message description.
+- `valueColumn`: one or more columns used as the event value.
+
+## 7. Timezone and timestamp handling
+
+The connector must know which timezone to use when it converts database timestamps into the Unix timestamp sent to Nexalis Cloud.
+
+### How timezone selection works
+
+The connector uses timezone settings in this order:
+
+- If `settings.timeZone` is defined for a `timeseries` or `events` table, that timezone is used for that table.
+- If the table does not define `timeZone`, the connector uses `dbTimeZone`.
+- If neither is set, use `UTC`.
+
+Recommended rule:
+
+- Use `UTC` if the database already stores timestamps in UTC.
+- Use the real plant timezone if the database stores local wall-clock time.
+
+### What `timestampFormat` does
+
+Use `timestampFormat` when the timestamp column is stored as text. Typical examples:
+
+- `%F %T` for values like `2026-04-03 14:30:00`
+- `%m/%d/%Y %T` for values like `04/03/2026 14:30:00`
+
+If the database column is a native SQL date or timestamp type, the ODBC driver may already return a typed timestamp and the format is less important.
+
+### Example A: timestamps stored as UTC text
+
+```json
+{
+  "dbTimeZone": "UTC",
+  "timeseries": [
+    {
+      "tables": ["measurements"],
+      "settings": {
+        "timestampColumn": "ts",
+        "timestampFormat": "%F %T",
+        "timeZone": "UTC",
+        "columns": [
+          { "dataPoint": "power_kw" }
+        ]
+      }
+    }
+  ]
+}
+```
+
+Use this when the values in the database are already UTC.
+
+### Example B: timestamps stored in plant local time
+
+```json
+{
+  "dbTimeZone": "America/Chicago",
+  "timeseries": [
+    {
+      "tables": ["measurements"],
+      "settings": {
+        "timestampColumn": "local_ts",
+        "timestampFormat": "%m/%d/%Y %T",
+        "timeZone": "America/Chicago",
+        "columns": [
+          { "dataPoint": "power_kw" }
+        ]
+      }
+    }
+  ]
+}
+```
+
+Use this when the timestamp string is written in local plant time.
+
+### Example C: table uses the default timezone from the config
+
+```json
+{
+  "dbTimeZone": "Europe/Paris",
+  "timeseries": [
+    {
+      "tables": ["measurements"],
+      "settings": {
+        "timestampColumn": "ts",
+        "timestampFormat": "%F %T",
+        "columns": [
+          { "dataPoint": "temperature" }
+        ]
+      }
+    }
+  ]
+}
+```
+
+Here the table does not define `timeZone`, so `Europe/Paris` is used from `dbTimeZone`.
+
+### Timestamp ambiguity during DST
+
+Ambiguity happens when local time is repeated during the fall DST change.
+
+Example in `America/Chicago`:
+
+- `2026-11-01 01:30:00` happens twice.
+- One occurrence is before the DST switch.
+- The second occurrence is after the DST switch.
+
+If your database stores only local clock time without an offset, the connector cannot always know immediately which of the two real instants the row means.
+
+What the connector does:
+
+- If the timestamp is unambiguous, it sends the row normally.
+- If the timestamp is ambiguous, it may delay that row instead of sending a wrong time.
+- The row is retried later using `ambiguousBackFillPeriod`.
+- Once the ambiguity can be resolved from later rows, the connector sends the data with the corrected timestamp.
+
+Practical advice:
+
+- Best option: store timestamps in UTC.
+- If you must store local time, set the correct `timeZone`.
+- Around DST transitions, avoid timestamp text that has no timezone or offset if your source system can provide UTC instead.
+
+### Example D: local timestamps with DST-sensitive timezone
+
+```json
+{
+  "dbTimeZone": "America/New_York",
+  "ambiguousBackFillPeriod": 7200,
+  "timeseries": [
+    {
+      "tables": ["meter_data"],
+      "settings": {
+        "timestampColumn": "reading_time",
+        "timestampFormat": "%F %T",
+        "timeZone": "America/New_York",
+        "columns": [
+          { "dataPoint": "energy_kwh" }
+        ]
+      }
+    }
+  ]
+}
+```
+
+This is valid, but UTC storage is still safer because it avoids repeated local times during DST changes.
+
+## 8. Running through the launcher
+
+The SQL connector is started by the Nexalis Agent launcher. It should not be run directly for normal operation.
+
+What you configure for the launcher:
+
+- the SQL connector JSON file
+- the site name and device ID used by the agent
+- the `gRPC_kafka` service used by the agent
+- the required database environment variables
+
+For Linux and Windows, the practical workflow is the same:
+
+1. Install the SQL ODBC driver on the machine.
+2. Place the SQL connector JSON configuration file in the agent configuration set.
+3. Set the required environment variables used in the `driver` section.
+4. Start Nexalis Agent through its normal launcher process.
+
+For Linux deployments, make sure:
+
+- the ODBC driver library exists on disk
+- the database host is reachable
+- the required environment variables are available to the launcher process
+
+Example environment variables on Linux:
+
+```bash
+export PGPORT=5432
+export PGDATABASE=plant_db
+export PGUSER=plant_user
+export PGPASSWORD=secret
+```
+
+For Windows deployments, make sure:
+
+- the required ODBC driver or DSN is installed
+- the SQL connector configuration points to the correct driver or DSN
+- the SQL database is reachable from the Windows host
+- the required environment variables, if used, are available to the launcher process
+
+## 9. Optional local records storage
+
+The connector keeps offsets and retry information in a local records database.
+
+If you do not define `localRecords`, the connector uses a local SQLite file by default.
+
+Example explicit configuration:
+
+```json
+{
+  "localRecords": {
+    "Driver": "${{ drivers }}/lib/libsqlite3odbc.so",
+    "Database": "./offsets.db"
+  }
+}
+```
+
+This is usually sufficient for Linux deployments.
+
+## 10. Recommended first test
+
+For a first validation:
+
+1. Configure one table only.
+2. Use a short `pollPeriod`, for example `1` second.
+3. Set `dbTimeZone` and `timestampFormat` carefully.
+4. Start Nexalis Agent through the launcher.
+5. Confirm that values appear in Nexalis Cloud with the expected timestamps.
+
+If timestamps are wrong, check first:
+
+- `timestampFormat`
+- `timeZone`
+- `dbTimeZone`
+- whether the database stores UTC or local time
