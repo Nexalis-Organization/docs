@@ -143,3 +143,60 @@ A list of GTS containing trapezoidal averages for each bucket. Only LONG and DOU
 1. **Retrieves** GTS data according to labels selection and extends time windows with boundary points (1 pre and post) for accurate edge calculations
 2. **Filters** to keep only analog measurements (gets rid of strings/booleans)
 3. **Averages** values by applying trapezoidal averaging to compute time-weighted means per bucket
+
+---
+
+## @nexalis/fetch_bucketized
+
+Fetches time-series data from Nexalis Cloud and bucketizes it into fixed-width time intervals using a Warp 10 bucketizer such as `last`, `first`, or `mean`. This macro calls `@nexalis/scale` by default, so returned values are scaled unless disabled.
+
+### Why use `@nexalis/fetch_bucketized`?
+
+Use this macro when you want to:
+- Resample raw time series into regular time buckets
+- Keep the latest, first, mean, or another bucketized value per interval
+- Query multiple GTS with label or attribute filters
+- Optionally return raw values without Nexalis scaling
+
+### Parameters
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `token` | STRING | Yes | Warp10 read token with fetch permissions |
+| `start` | STRING or LONG | Yes | Start timestamp (ISO8601 string or microseconds) |
+| `end` | STRING or LONG | Yes | End timestamp (ISO8601 string or microseconds) |
+| `bucket_size` | LONG | Yes | Bucket width in minutes |
+| `bucketizer` | STRING | Yes | Warp 10 bucketizer to apply, for example `last`, `first`, or `mean` |
+| `labels` | MAP | Yes | Labels and attributes used to filter GTS (supports regexp with `~` prefix) |
+| `scaling` | BOOLEAN | No | Applies `@nexalis/scale` to the result (default: `true`) |
+| `class` | STRING | No | Selector for the GTS classes (default: `"nx.value"`) |
+
+### Returns
+
+A list of bucketized GTS over the requested time range.
+
+<Note>
+The macro aligns the requested start and end timestamps to bucket boundaries, prevents future timestamps from being queried, and fills bucket gaps using previous values before clipping back to the requested interval.
+</Note>
+
+### Example Usage
+
+```warpscript
+// Fetch 5-minute bucketized values using the last value in each bucket
+
+{ 'token' $read_token
+  'start' '2026-01-01T00:00:00Z'
+  'end' '2026-01-02T00:00:00Z'
+  'bucket_size' 5    // minutes
+  'bucketizer' 'last'
+  'labels' { 'siteName' 'stationA' 'description' '~(.*power.*|.*speed.*)' }
+} @nexalis/fetch_bucketized
+```
+
+### How It Works
+
+1. Fetches GTS matching the requested class, labels, and attributes, with one boundary value before and after the interval.
+2. Normalizes timestamps and aligns them to the requested bucket size.
+3. Applies the selected Warp 10 bucketizer over fixed-width buckets.
+4. Fills missing buckets using previous values, shifts timestamps to bucket starts, and clips to the requested interval.
+5. Applies `@nexalis/scale` unless `scaling` is set to `false`.
