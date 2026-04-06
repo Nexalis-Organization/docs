@@ -10,14 +10,14 @@ Nexalis Cloud provides built-in functions for advanced time-series data processi
 
 ## @nexalis/scale
 
-Applies scaling transformations to GTS values using `multiplier` and `adder` attributes. This is useful for unit conversions, calibration adjustments, or normalization.
+Applies scaling transformations to dataPoints values using `multiplier` and `adder` attributes. This is useful for unit conversions, calibration adjustments, or normalization.
 
 
 ### Use Cases
 
 The primary purpose of `@nexalis/scale` is to transform raw industrial values into standardized units defined by the **Nexalis data model**. Values are stored "raw" (as sent from the data sources), and the `multiplier` and `adder` attributes bring them into the **correct units**.
 
-**Example**: A site sends active power measurements in Watts (W), but the Nexalis data model specifies kilowatts (kW). The GTS would have:
+**Example**: A site sends active power measurements in Watts (W), but the Nexalis data model specifies kilowatts (kW). The dataPoint would have:
 - `multiplier: 0.001` (converts W → kW)
 - `adder: 0`
 
@@ -32,7 +32,7 @@ When you fetch this data and apply `@nexalis/scale`, a raw value of 5000 W becom
 
 ### Attributes Used
 
-The function reads these attributes from each GTS:
+The function reads these attributes from each dataPoint:
 - **multiplier**: Multiplies each value (e.g., for unit conversion)
 - **adder**: Adds to each value (e.g., for offset correction)
 
@@ -40,7 +40,7 @@ If one of 'multiplier' or 'adder' is missing or null, that transformation is ski
 
 ### Formula
 
-For each data point:
+For each dataPoint:
 ```
 scaled_value = original_value × multiplier + adder
 ```
@@ -50,12 +50,12 @@ scaled_value = original_value × multiplier + adder
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `DATA` | LIST&lt;GTS&gt; | List of GTS to apply scaling transformations |
+| `DATA` | LIST&lt;dataPoint&gt; | List of dataPoints to apply scaling transformations |
 
 
 ### Returns
 
-A list of GTS with scaled values. The original `multiplier` and `adder` attributes remain in the GTS metadata.
+A list of dataPoints with scaled values. The original `multiplier` and `adder` attributes remain in the dataPoint metadata.
 
 
 ### Example: Power Standardization
@@ -71,7 +71,7 @@ A list of GTS with scaled values. The original `multiplier` and `adder` attribut
 } FETCH
 
 // Apply scaling to convert W → kW per Nexalis data model
-// GTS has attributes: multiplier=0.001, adder=0
+// dataPoint has attributes: multiplier=0.001, adder=0
 
 @nexalis/scale
 ```
@@ -95,17 +95,17 @@ Unlike simple arithmetic means, trapezoidal averaging accounts for the time dura
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `read_token` | STRING | Yes | Warp10 read token with fetch permissions |
+| `read_token` | STRING | Yes | Nexalis API read token with fetch permissions |
 | `start` | STRING or LONG | Yes | Start timestamp (ISO8601 string or microseconds) |
 | `end` | STRING or LONG | Yes | End timestamp (ISO8601 string or microseconds) |
 | `bucket_size` | LONG | Yes | Bucket width in minutes |
-| `labels` | MAP | Yes | Labels **and attributes** to filter GTS (supports regexp with `~` prefix) |
+| `labels` | MAP | Yes | Labels **and attributes** to filter dstaPoints (supports regexp with `~` prefix) |
 | `scaling` | BOOLEAN | No | Boolean to apply scaling using @nexalis/scale macro (default: true) |
-| `class` | STRING | No | Selector for the GTS classes (default: "nx.value") |
+| `class` | STRING | No | Selector for the dataPoints classes (default: "nx.value") |
 
 ### Returns
 
-A list of GTS containing trapezoidal averages for each bucket. Only LONG and DOUBLE value types are processed; discrete measurements (STRING/BOOLEAN) are automatically filtered out.
+A list of dataPoints containing trapezoidal averages for each bucket. Only LONG and DOUBLE value types are processed; discrete measurements (STRING/BOOLEAN) are automatically filtered out.
 
 <Note>
 **NaN values**: The macro returns `NaN` (Not a Number) for buckets where no values were recorded during the interval and no anterior values exist for trapezoidal interpolation. This will only occur at the start of a time series.
@@ -140,7 +140,7 @@ A list of GTS containing trapezoidal averages for each bucket. Only LONG and DOU
 
 ### How It Works
 
-1. **Retrieves** GTS data according to labels selection and extends time windows with boundary points (1 pre and post) for accurate edge calculations
+1. **Retrieves** dataPoints data according to labels selection and extends time windows with boundary points (1 pre and post) for accurate edge calculations
 2. **Filters** to keep only analog measurements (gets rid of strings/booleans)
 3. **Averages** values by applying trapezoidal averaging to compute time-weighted means per bucket
 
@@ -148,32 +148,32 @@ A list of GTS containing trapezoidal averages for each bucket. Only LONG and DOU
 
 ## @nexalis/fetch_bucketized
 
-Fetches time-series data from Nexalis Cloud and bucketizes it into fixed-width time intervals using a Warp 10 bucketizer such as `last`, `first`, or `mean`. This macro calls `@nexalis/scale` by default, so returned values are scaled unless disabled.
+Fetches time-series data from Nexalis Cloud and bucketizes it into fixed-width time intervals using a timeseries bucketizer such as `last`, `first`, `max` or `mean`. This macro calls `@nexalis/scale` by default, so returned values are scaled unless disabled.
 
 ### Why use `@nexalis/fetch_bucketized`?
 
 Use this macro when you want to:
 - Resample raw time series into regular time buckets
 - Keep the latest, first, mean, or another bucketized value per interval
-- Query multiple GTS with label or attribute filters
+- Query multiple dataPoints with label or attribute filters
 - Optionally return raw values without Nexalis scaling
 
 ### Parameters
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `token` | STRING | Yes | Warp10 read token with fetch permissions |
+| `token` | STRING | Yes | Nexalis API read token with fetch permissions |
 | `start` | STRING or LONG | Yes | Start timestamp (ISO8601 string or microseconds) |
 | `end` | STRING or LONG | Yes | End timestamp (ISO8601 string or microseconds) |
 | `bucket_size` | LONG | Yes | Bucket width in minutes |
-| `bucketizer` | STRING | Yes | Warp 10 bucketizer to apply, for example `last`, `first`, or `mean` |
-| `labels` | MAP | Yes | Labels and attributes used to filter GTS (supports regexp with `~` prefix) |
+| `bucketizer` | STRING | Yes | Bucketizer to apply, for example `last`, `first`, or `mean` |
+| `labels` | MAP | Yes | Labels and attributes used to filter dataPoints (supports regexp with `~` prefix) |
 | `scaling` | BOOLEAN | No | Applies `@nexalis/scale` to the result (default: `true`) |
-| `class` | STRING | No | Selector for the GTS classes (default: `"nx.value"`) |
+| `class` | STRING | No | Selector for the dataPoints classes (default: `"nx.value"`) |
 
 ### Returns
 
-A list of bucketized GTS over the requested time range.
+A list of bucketized dataPoints over the requested time range.
 
 <Note>
 The macro aligns the requested start and end timestamps to bucket boundaries, prevents future timestamps from being queried, and fills bucket gaps using previous values before clipping back to the requested interval.
@@ -195,8 +195,8 @@ The macro aligns the requested start and end timestamps to bucket boundaries, pr
 
 ### How It Works
 
-1. Fetches GTS matching the requested class, labels, and attributes, with one boundary value before and after the interval.
+1. Fetches dataPoints matching the requested class, labels, and attributes, with one boundary value before and after the interval.
 2. Normalizes timestamps and aligns them to the requested bucket size.
-3. Applies the selected Warp 10 bucketizer over fixed-width buckets.
+3. Applies the selected timeseries bucketizer over fixed-width buckets.
 4. Fills missing buckets using previous values, shifts timestamps to bucket starts, and clips to the requested interval.
 5. Applies `@nexalis/scale` unless `scaling` is set to `false`.
