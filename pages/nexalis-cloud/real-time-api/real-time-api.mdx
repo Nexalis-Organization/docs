@@ -3,15 +3,6 @@ title: "Real-Time API"
 ---
 
 Nexalis Cloud exposes a powerful real-time API which allows users to query and fetch high-frequency sensor data using WarpScript, a stack-based language designed for time-series analysis.
----
----
-
-## Quick Start Examples
-
-- **[Nexalis Macros](./nexalis-macros)** - Learn how to use Nexalis custom macros for simplified queries
-- **[Python Examples](./python-examples)** - Integrate the API into your Python data pipelines
-- **[PowerBI Examples](./powerbi-examples)** - Create dashboards with time-series data
-
 
 ---
 
@@ -95,7 +86,7 @@ Output:
 ```
 [[{"c":"nx.value",
 "l":{"siteName":"TX_001","deviceModel":"Satcon",".app":"nexalis","deviceID":"01234","dataPoint":"42"},
-"a":{"dataObject":"TotW","subDataObject":"","protocol":"modbus_tcp","multiplier":"0.1","logicalNode":"MMXU","measurementType":"Analog","description":"AC Power, Generated = Export, from Inverter","engUnits":"kW","adder":"0","nx-agent-id":"v1.1.5#xxxx","assetType":"INV","subDeviceID":"BLK_001_23},
+"a":{"dataObject":"TotW","subDataObject":"","protocol":"modbus_tcp","multiplier":"0.1","logicalNode":"MMXU","measurementType":"Analog","description":"AC Power, Generated = Export, from Inverter","engUnits":"kW","adder":"0","nx-agent-id":"v1.1.5#xxxx","assetType":"INV","subDeviceID":"BLK_001_23"},
 "la":0,
 "v":[]}]]
 ```
@@ -126,7 +117,7 @@ Output:
 ```
 [[{"c":"nx.value",
 "l":{"siteName":"TX_001","deviceModel":"Satcon",".app":"nexalis","deviceID":"01234","dataPoint":"42"},
-"a":{"dataObject":"TotW","subDataObject":"","protocol":"modbus_tcp","multiplier":"0.1","logicalNode":"MMXU","measurementType":"Analog","description":"AC Power, Generated = Export, from Inverter","engUnits":"kW","adder":"0","nx-agent-id":"v1.1.5#xxxx","assetType":"INV","subDeviceID":"BLK_001_23},
+"a":{"dataObject":"TotW","subDataObject":"","protocol":"modbus_tcp","multiplier":"0.1","logicalNode":"MMXU","measurementType":"Analog","description":"AC Power, Generated = Export, from Inverter","engUnits":"kW","adder":"0","nx-agent-id":"v1.1.5#xxxx","assetType":"INV","subDeviceID":"BLK_001_23"},
 "la":0,
 "v":[[1768438794869000,0,348],[1768438790168000,0,346],[1768438784989000,0,350], ... ,[1768435210217000,0,405],[1768435200214000,0,386]]}]]
 ```
@@ -143,6 +134,75 @@ Both FIND and FETCH functions support:
 
 Additionally, FETCH supports:
 - **Flexible time ranges** with ISO8601 strings or microseconds unix time
+
+---
+
+## Best Practices
+
+### FIND first, then FETCH per tag
+
+When querying multiple tags, always **discover before you fetch**:
+
+1. Use **FIND** with label filters to get the list of matching tags and their exact identifiers
+2. **FETCH each tag individually** using `deviceID` + `dataPoint` from the FIND results
+
+```python
+import requests
+
+ENDPOINT = "https://yourcompany.app.nexalis.io/api/v0/exec"
+READ_TOKEN = "YOUR_READ_TOKEN"
+
+# Step 1: discover all matching tags
+find_query = f"""
+{{
+  'token' '{READ_TOKEN}'
+  'class' 'nx.value'
+  'labels' {{ 'siteName' 'TX_001' 'assetType' 'INV' 'dataObject' 'TotW' }}
+}} FIND
+"""
+tags = requests.post(
+    ENDPOINT,
+    headers={{"Content-Type": "text/plain; charset=UTF-8"}},
+    data=find_query
+).json()[0]
+
+# Step 2: fetch each tag individually over the full time range
+for gts in tags:
+    l = gts["l"]
+    fetch_query = f"""
+    {{
+      'token' '{READ_TOKEN}'
+      'class' 'nx.value'
+      'labels' {{ 'deviceID' '{l["deviceID"]}' 'dataPoint' '{l["dataPoint"]}' }}
+      'start' '2026-01-01T00:00:00Z'
+      'end' '2026-02-01T00:00:00Z'
+    }} FETCH
+    @nexalis/scale
+    """
+    data = requests.post(
+        ENDPOINT,
+        headers={{"Content-Type": "text/plain; charset=UTF-8"}},
+        data=fetch_query
+    ).json()
+    # process data...
+```
+
+<Note>
+This pattern keeps each request small and predictable. If a single tag fails, the others are unaffected. For concurrent fetching, wrap the loop in a `ThreadPoolExecutor`.
+</Note>
+
+### Go deep, not wide
+
+Timeseries databases are optimized for long reads on a single tag. **One tag over a long period is always faster than many tags at once.**
+
+| Avoid | Prefer |
+|-------|--------|
+| Fetch 50 tags over 1 month in one request | Fetch 1 tag over 1 month, repeat for each tag |
+| Broad FETCH with only `assetType` + `dataObject` | Narrow FETCH with `deviceID` + `dataPoint` |
+
+### Filter as specifically as possible
+
+Every label you add reduces the number of series the API needs to scan. Always include `siteName` when targeting a specific site, and add `deviceID` or `dataPoint` when you know them.
 
 ---
 
