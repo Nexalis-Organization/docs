@@ -11,7 +11,7 @@ This page lists the most frequent errors you may encounter when using the Nexali
 **Cause:** Missing or incorrect READ token
 
 **Solution:** 
-- Verify your token is correct and included in the `X-Warp10-Token` header
+- Verify your token is correct
 - Contact [contact@nexalis.io](mailto:contact@nexalis.io) if you need a new token
 - Ensure there are no extra spaces or characters in the token
 
@@ -28,30 +28,6 @@ This page lists the most frequent errors you may encounter when using the Nexali
 - Check that data exists for the specified time range
 - Use FIND to discover available metrics first before fetching
 - Confirm the device is actively sending data
-
----
-
-## WarpScript Syntax Error
-
-**Error:** `WarpScript error` or parsing failure message
-
-**Cause:** Invalid WarpScript syntax in your query
-
-**Solution:**
-- Check for matching quotes (single quotes `'` for strings)
-- Verify proper spacing and structure in label maps
-- Ensure all braces `{}` and brackets `[]` are properly closed
-- Test your query in smaller parts to isolate the issue
-- Review the [WarpScript documentation](https://www.warp10.io/content/03_Documentation/04_WarpScript) for syntax rules
-
-**Example of correct syntax:**
-```warpscript
-{
-  'token' 'YOUR_READ_TOKEN'
-  'class' 'nx.value'
-  'labels' { 'siteName' 'site_A' }
-} FIND
-```
 
 ---
 
@@ -78,7 +54,7 @@ This page lists the most frequent errors you may encounter when using the Nexali
 
 **Solution:**
 - Check the macro name spelling (case-sensitive)
-- Verify the macro exists in the [Warp10 Macros guide](./warp10-macros)
+- Verify the macro exists
 - Contact support if you believe the macro should be available
 
 ---

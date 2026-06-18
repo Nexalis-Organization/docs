@@ -244,7 +244,7 @@ let
     RawText  = Text.Replace(RawText2, "[NaN", "[null"),
     Raw = Json.Document(RawText),
 
-    // Warp10 output shapes we expect: [[]] or [[{...}]] or [[{...},{...},...]]
+    // Output shapes we expect: [[]] or [[{...}]] or [[{...},{...},...]]
     Inner = if List.Count(Raw) = 0 then {} else Raw{0},
     GTSList = if Inner = null or (Type.Is(Value.Type(Inner), List.Type) = false) then {} else Inner,
 
@@ -444,6 +444,5 @@ For real-time analysis and high-frequency data processing, use the [Python integ
 
 ## Next Steps
 
-- Review [Warp10 macro examples](./warp10-macros) for more query patterns
 - Learn about [Python integration](./python-examples) for data pipelines
 - Check the [complete API reference](../real-time-api) for advanced features

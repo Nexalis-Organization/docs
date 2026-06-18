@@ -28,11 +28,7 @@ Replace `yourcompany` with your organization's name. All requests must be sent v
 
 ## Authentication
 
-All API requests require authentication using a Warp10 READ token passed in the request header:
-
-```bash
-X-Warp10-Token: YOUR_READ_TOKEN
-```
+All API requests require authentication using a READ token.
 
 > Contact [contact@nexalis.io](mailto:contact@nexalis.io) to obtain your READ token.
 
@@ -78,7 +74,7 @@ The API uses WarpScript, a stack-based language for time-series operations. Two 
 
 ### FIND - Discover Available Metrics
 
-Search for time-series matching specific criteria without fetching values. Useful for exploring what data is available. Complete documentation [here](https://www.warp10.io/doc/FIND).
+Search for time-series matching specific criteria without fetching values. Useful for exploring what data is available.
 
 Example query:
 
@@ -107,7 +103,7 @@ FIND returns class (`"c":{...}`), labels (`"l":{...}`), attributes (`"a":{...}`)
 
 ### FETCH - Retrieve Time-Series Data
 
-Fetch actual values for specific time ranges and metrics. Complete documentation [here](https://www.warp10.io/doc/FETCH).
+Fetch actual values for specific time ranges and metrics.
 
 Example query:
 
@@ -297,6 +293,5 @@ This works seamlessly with cURL, Python, PowerBI, and any other HTTP-capable too
 - **[Nexalis Macros Examples](./nexalis-macros)** - Detailed macro usage and patterns
 - **[Python Integration](./python-examples)** - Build data pipelines with Python
 - **[PowerBI Integration](./powerbi-examples)** - Create live dashboards
-- **Warp10** - [FIND](https://www.warp10.io/doc/FIND) and [FETCH](https://www.warp10.io/doc/FETCH) complete documentations
 
 For API access and support, contact [contact@nexalis.io](mailto:contact@nexalis.io)
