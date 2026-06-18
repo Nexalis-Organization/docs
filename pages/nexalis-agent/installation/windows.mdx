@@ -4,11 +4,24 @@ title: "Running Nexalis Agent in Windows"
 
 ### Windows install folders and file locations
 
-You’ll receive two installers: NexalisAgent-[VERSION]-win-x64 (for example, NexalisAgent-1.1.6-win-x64) or NexalisAgent-[VERSION]-win-x86 (for example, NexalisAgent-1.1.6-win-x86)
-Run the installer that matches your system architecture (x64 or x86).
+Nexalis Agent is distributed as a ZIP package, available in two architecture-specific builds:
 
-In x64 the installer installs the agent, gRPC_kafka and connectors inside `C:\Program Files\Nexalis\NexalisAgent`.
-In x86 the installer installs the agent, gRPC_kafka and connectors inside `C:\Program Files (x86)\Nexalis\NexalisAgent`.
+- **x64** — `NexalisAgent-[VERSION]-win-x64` (for example, `NexalisAgent-1.1.6-win-x64`)
+- **x86** — `NexalisAgent-[VERSION]-win-x86` (for example, `NexalisAgent-1.1.6-win-x86`)
+
+Download and run only the build that matches your system architecture.
+
+Each ZIP contains the Nexalis Agent installer together with the Microsoft Visual C++ Redistributable installer(s) it depends on:
+
+- The **x64** package contains `NexalisAgent-[VERSION]-win-x64.exe`, `vc_redist.x64.exe` and `vc_redist.x86.exe`.
+- The **x86** package contains `NexalisAgent-[VERSION]-win-x86.exe` and `vc_redist.x86.exe`.
+
+Run the `NexalisAgent-[VERSION]-win-<arch>.exe` installer. It automatically installs the bundled `vc_redist` redistributable(s) for you, so you do not need to run them manually.
+
+The installer places the agent, `gRPC_kafka` and connectors inside:
+
+- **x64:** `C:\Program Files\Nexalis\NexalisAgent`
+- **x86:** `C:\Program Files (x86)\Nexalis\NexalisAgent`
 
 For consistency, the data and logs are written inside `%ProgramData%\Nexalis\NexalisAgent`, usually `C:\ProgramData\Nexalis\NexalisAgent`.
 
