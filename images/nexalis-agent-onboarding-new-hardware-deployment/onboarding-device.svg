@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 460" font-family="-apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="case" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b2b2e"/>
+      <stop offset="1" stop-color="#161618"/>
+    </linearGradient>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="2" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M7,0 L0,3 L7,6 Z" fill="#2e7d46"/>
+    </marker>
+  </defs>
+
+  <!-- title -->
+  <text x="360" y="40" text-anchor="middle" fill="#0f172a" font-size="22" font-weight="700">Nexalis Flash onboarding device</text>
+  <text x="360" y="66" text-anchor="middle" fill="#475569" font-size="14">A small single-board computer (Raspberry Pi) supplied with the kit</text>
+
+  <!-- shadow -->
+  <ellipse cx="360" cy="408" rx="240" ry="20" fill="#0f172a" opacity="0.08"/>
+
+  <!-- enclosure body -->
+  <rect x="150" y="120" width="420" height="250" rx="22" fill="url(#case)" stroke="#000" stroke-width="2"/>
+  <!-- top vents -->
+  <g fill="#000" opacity="0.45">
+    <rect x="185" y="150" width="150" height="8" rx="4"/>
+    <rect x="185" y="168" width="150" height="8" rx="4"/>
+    <rect x="185" y="186" width="150" height="8" rx="4"/>
+    <rect x="185" y="204" width="150" height="8" rx="4"/>
+    <rect x="185" y="222" width="150" height="8" rx="4"/>
+  </g>
+  <!-- subtle highlight -->
+  <rect x="160" y="130" width="400" height="60" rx="16" fill="#ffffff" opacity="0.04"/>
+
+  <!-- right side: ports panel -->
+  <rect x="470" y="138" width="86" height="214" rx="10" fill="#0c0c0d"/>
+  <!-- USB-A stack -->
+  <rect x="486" y="158" width="54" height="26" rx="3" fill="#cfd3d8"/>
+  <rect x="490" y="164" width="46" height="6" rx="2" fill="#4b5563"/>
+  <rect x="486" y="192" width="54" height="26" rx="3" fill="#1f78ff"/>
+  <rect x="490" y="198" width="46" height="6" rx="2" fill="#dbeafe"/>
+  <!-- Ethernet -->
+  <rect x="486" y="232" width="54" height="40" rx="4" fill="#cfd3d8"/>
+  <rect x="498" y="244" width="30" height="20" rx="2" fill="#4b5563"/>
+
+  <!-- micro-USB power port (highlighted) on left edge -->
+  <rect x="142" y="250" width="30" height="20" rx="4" fill="#9aa0a6"/>
+  <rect x="146" y="255" width="22" height="10" rx="2" fill="#4b5563"/>
+  <!-- micro-USB cable stub -->
+  <path d="M142 260 C 90 260, 80 300, 60 320" stroke="#1f1f1f" stroke-width="9" fill="none" stroke-linecap="round"/>
+  <rect x="44" y="306" width="24" height="30" rx="4" fill="#1f1f1f" transform="rotate(35 56 321)"/>
+
+  <!-- callout: micro-USB -->
+  <line x1="60" y1="320" x2="40" y2="372" stroke="#2e7d46" stroke-width="2" marker-end="url(#ar)"/>
+  <rect x="18" y="378" width="220" height="30" rx="8" fill="#e9f5ee" stroke="#2e7d46" stroke-width="1.5"/>
+  <text x="128" y="398" text-anchor="middle" fill="#1f6b3e" font-size="14" font-weight="700">micro-USB → target hardware</text>
+
+  <!-- callout: ports -->
+  <line x1="556" y1="200" x2="612" y2="200" stroke="#475569" stroke-width="2"/>
+  <text x="618" y="190" fill="#475569" font-size="13">USB-A</text>
+  <text x="618" y="208" fill="#475569" font-size="13">+ Ethernet</text>
+
+  <!-- BLE indicator -->
+  <circle cx="360" cy="300" r="26" fill="#0f172a"/>
+  <path d="M360 282 l12 9 -12 9 0 -36 12 9 -12 9" fill="none" stroke="#ffffff" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
+  <text x="360" y="350" text-anchor="middle" fill="#cbd5e1" font-size="12">advertises over Bluetooth</text>
+</svg>

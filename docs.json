@@ -35,7 +35,7 @@
                 "group": "Lakehouse Sharing",
                 "pages": [
                   {
-                  "group": "Data Structure",
+                    "group": "Data Structure",
                     "pages": [
                       "pages/nexalis-cloud/lakehouse-data-sharing/data-structure/data-tables",
                       "pages/nexalis-cloud/lakehouse-data-sharing/data-structure/table-schema",
@@ -75,10 +75,15 @@
               "pages/nexalis-agent/configuration/connectors/sql",
               "pages/nexalis-agent/configuration/connectors/other_connectors"
             ]
+          },
+          {
+            "group": "Hardware deployment",
+            "pages": [
+              "pages/nexalis-agent/hardware/new-hardware-deployment"
+            ]
           }
         ]
       }
     ]
   }
 }
-

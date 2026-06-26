@@ -1,0 +1,178 @@
+---
+title: "Deploying a new hardware device"
+description: "Provision a new Nexalis Agent edge device with the Nexalis Flash mobile app."
+---
+
+This guide explains how to onboard a **brand-new edge device** that will run the Nexalis Agent. The whole process is done from your phone with the **Nexalis Flash** app: you connect to a small onboarding device over Bluetooth, the onboarding device flashes the Nexalis Agent image onto the target hardware over USB, and after a power cycle the device boots, registers with **Nexalis Edge Manager** and starts streaming data to Nexalis Cloud.
+
+No PC, no terminal and no inbound network ports are required.
+
+---
+
+## How the setup is wired
+
+<img src="/images/nexalis-agent-onboarding-new-hardware-deployment/setup-diagram.svg" alt="Onboarding setup: target hardware connected by micro-USB to the onboarding device, which is paired over Bluetooth to the Nexalis Flash app" style={{ maxWidth: "100%" }} />
+
+There are three pieces involved during onboarding:
+
+- **The target hardware** — the device that will permanently run the Nexalis Agent, mounted in its enclosure (e.g. a Compulab IOTG, see [Supported hardware](#supported-hardware)).
+- **The onboarding device** — a small single-board computer (a Raspberry Pi) supplied by Nexalis that runs the **Nexalis Flash** firmware. It does the actual flashing and advertises itself over Bluetooth.
+- **Your phone** — running the **Nexalis Flash** app (iOS or Android), which drives the whole flow.
+
+The target hardware is connected to the onboarding device with a **micro-USB cable**; your phone talks to the onboarding device over **Bluetooth**. Once flashing succeeds and the target is power-cycled, the onboarding device and the phone are no longer needed.
+
+---
+
+## Supported hardware
+
+The Nexalis Agent runs on standard x86 and ARM industrial edge hardware, so in many cases you can reuse hardware you already have — there's no need to buy a brand-new device for every deployment. When you **do** need to provision new hardware, the model we recommend is the **Compulab IOTG-IMX8PLUS-C1800QM-D2-N16-WB-TIC**:
+
+- Based on the NXP **i.MX 8M Plus** (ARM), fanless and DIN-rail mountable.
+- 2 GB RAM / 16 GB eMMC, Wi-Fi + Ethernet — comfortably above the Nexalis Agent baseline.
+- **Unit cost under \$500**, which makes it a cost-effective default for most sites.
+
+<Note>
+The Compulab IOTG is our reference device, but the onboarding flow is **not limited to it**. The Nexalis Agent also runs on industrial computers from **Advantech**, **OnLogic** and other mainstream x86/ARM vendors. If you plan to use a different model, confirm compatibility with the Nexalis team first, then follow the same steps below. See also [Technical requirements](/pages/nexalis-agent/technical_requirements).
+</Note>
+
+---
+
+## What you need
+
+Before you start, make sure you have:
+
+- The **target hardware**, installed in its enclosure and ready to be connected.
+- The **onboarding device** (Raspberry Pi running Nexalis Flash) and its **power supply**.
+- The **micro-USB cable** that links the onboarding device to the target hardware.
+- A phone with the **Nexalis Flash** app installed and **Bluetooth enabled**.
+- A **Nexalis account** — or create one directly in the app (steps 1–3).
+
+<div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "flex-start" }}>
+  <figure style={{ margin: 0, maxWidth: "320px" }}>
+    <img src="/images/nexalis-agent-onboarding-new-hardware-deployment/onboarding-device.svg" alt="The Raspberry Pi onboarding device with its micro-USB and USB/Ethernet ports" style={{ width: "100%" }} />
+    <figcaption style={{ fontSize: "13px", color: "#475569" }}>The onboarding device (Raspberry Pi). The <strong>micro-USB</strong> port connects to the target hardware.</figcaption>
+  </figure>
+  <figure style={{ margin: 0, maxWidth: "320px" }}>
+    <img src="/images/nexalis-agent-onboarding-new-hardware-deployment/onboarding-device-3.jpg" alt="Power supply and micro-USB cable for the onboarding device" style={{ width: "100%", borderRadius: "10px" }} />
+    <figcaption style={{ fontSize: "13px", color: "#475569" }}>Power supply (to power the onboarding device) and the <strong>micro-USB cable</strong> used to flash the target.</figcaption>
+  </figure>
+</div>
+
+---
+
+## Install the Nexalis Flash app
+
+Download **Nexalis Flash** from the App Store (iOS) or Google Play (Android) and grant it **Bluetooth** permission when prompted — the app cannot find the onboarding device without it.
+
+<Warning>
+Bluetooth must stay **on** for the entire process. If the app reports `Bluetooth adapter is BluetoothAdapterState.unknown. Turn Bluetooth on and scan again.`, enable Bluetooth in your phone settings and tap **Scan again**.
+</Warning>
+
+---
+
+## Step-by-step
+
+### 1. Log in (or sign up)
+
+Open the app to reach the landing page. Sign in with your Nexalis account email and password. **Don't have an account yet?** Tap **Sign up** to create one (steps 2–3), then come back here to log in.
+
+<img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img01.png" alt="Nexalis Flash landing / login screen" width="260" />
+
+### 2. Create an account (first time only)
+
+On the **Sign up** screen, enter your email and a password, then tap **Create account**.
+
+<img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img03.png" alt="Sign up screen with email and password" width="260" />
+
+### 3. Confirm your email
+
+Enter the confirmation code sent to your email address and tap **Confirm and continue**, then return to the landing page to log in.
+
+<img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img05.png" alt="Email confirmation screen" width="260" />
+
+### 4. Power the onboarding device
+
+Connect the onboarding device to its **power supply** and wait a few seconds for it to boot. It then broadcasts a Bluetooth network named **"Nexalis Flash"** — this is the network your phone will scan for and pair with in steps 6–7. Keep the device close to your phone and make sure **Bluetooth is on**.
+
+<Note>
+**Connecting happens in two stages.** First you **detect and select** the onboarding device *inside the app* (steps 5–6). Then, when the app prompts you, you **open your phone's Settings → Bluetooth yourself** to do the actual **pairing** (step 7), and return to the app. You don't pair from phone Settings until the app asks you to.
+</Note>
+
+### 5. Open the Flash Device screen
+
+Once logged in you land on the **Nexalis Flash Device** screen. Tap **Add Flash Device** to detect a new onboarding device, or — if you've used one before — select it directly from the **Saved devices** list and skip to step 7.
+
+<img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img06.png" alt="Nexalis Flash Device home screen with Add Flash Device button" width="260" />
+
+### 6. Scan and select the onboarding device
+
+The app scans for nearby Flash devices. When the onboarding device appears (shown with its signal strength and identifier), tap it to select it.
+
+<img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img10.png" alt="Scanning for nearby Flash devices, one device found" width="260" />
+
+The selected device is saved and appears under **Saved devices**.
+
+<img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img12.png" alt="Onboarding device added to saved devices" width="260" />
+
+### 7. Pair over Bluetooth
+
+Tap the saved device. The app asks you to **pair Nexalis Flash in your phone's Settings → Bluetooth**, then return to the app. Open your phone's Bluetooth settings, pair with the device, come back and tap **Continue after pairing**.
+
+<img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img14.png" alt="Prompt to pair Nexalis Flash in phone Bluetooth settings" width="260" />
+
+The checklist (Connect → Discover services → Pair → Authenticate → Read status) fills in as the secure connection is established.
+
+### 8. Name the device
+
+Enter a **device name** for the new hardware. This is the name the device will have in **Nexalis Edge Manager**, so choose something recognizable (for example the site or asset name). Use only letters, numbers, `_` or `-`.
+
+<img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img15.png" alt="Entering the device name" width="260" />
+
+### 9. Connect the target hardware
+
+When the app shows **"Bluetooth ready. Waiting for a USB device to flash."**, connect the **target hardware to the onboarding device using the micro-USB cable**, and power on the target hardware.
+
+<img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img17.png" alt="Bluetooth ready, waiting for a USB device to flash" width="260" />
+
+### 10. Flash the device
+
+As soon as the target is detected, the status changes to **"USB device ready to flash"** and the **Flash** button turns green. Tap **Flash** to start.
+
+<img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img19.png" alt="USB device ready to flash with Flash button enabled" width="260" />
+
+The flash command is sent over Bluetooth and the onboarding device writes the Nexalis Agent image to the target. A progress bar shows the status — **keep the app open and the devices powered** until it finishes.
+
+<img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img20.png" alt="Flashing in progress" width="260" />
+
+### 11. Power cycle the target
+
+When you see **"Flash complete. Power cycle the USB device…"**, the image has been written successfully. **Disconnect and reconnect power** to the target hardware so it boots from the freshly flashed image.
+
+<img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img21.png" alt="Flash complete, power cycle the device" width="260" />
+
+After the power cycle, the target boots the Nexalis Agent image, connects to the site network, registers in **Nexalis Edge Manager** under the name you chose, and begins streaming data to **Nexalis Cloud**.
+
+---
+
+## Troubleshooting
+
+<Note>
+**No Flash device found.** Make sure the onboarding device is powered and within range, that Bluetooth is on, and that you granted the app Bluetooth permission. Keep the scan page open and tap **Scan again**.
+</Note>
+
+<Note>
+**Stuck on "Waiting for a USB device to flash".** Check that the micro-USB cable is firmly seated in both the onboarding device and the target, that the target is powered on, and try a different micro-USB cable if the issue persists.
+</Note>
+
+<Note>
+**Flash failed / retrying.** The app retries automatically (up to 3 attempts). If it still fails, follow the on-screen prompt to **power cycle the USB device before flashing again**, then retry.
+</Note>
+
+---
+
+## Next steps
+
+Once the device is online, continue with:
+
+- [Installation → Main services](/pages/nexalis-agent/installation/main-services) to understand the agent components.
+- [Configuration → gRPC/Kafka](/pages/nexalis-agent/configuration/gRPC_kafka) and the [connectors](/pages/nexalis-agent/configuration/connectors/opc_ua) to start collecting data.
