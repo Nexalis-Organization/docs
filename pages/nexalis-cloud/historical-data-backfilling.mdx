@@ -1,0 +1,64 @@
+---
+title: "Historical Data Backfilling"
+---
+
+Nexalis Cloud is designed for real-time industrial data, but many use cases — trend analysis, ML model training, performance benchmarking — require **historical data** that predates your Nexalis deployment. Historical data backfilling lets you load one, two, or more years of history from your existing data historian into Nexalis Cloud, where it becomes available through the same access methods as your live data.
+
+---
+
+## How It Works
+
+The backfill process converts your historical data into **NFiles**, the Nexalis historical file format, and loads them into Nexalis Cloud:
+
+1. **Extraction** — The Nexalis backfill tool connects to your source system (e.g., an OSIsoft/AVEVA PI historian, SQL database, or CSV exports) and extracts the historical time-series data for the selected tags and time range.
+2. **Conversion** — The extracted data is converted into NFiles. NFiles contain only the **raw vendor tags**; data contextualization and standardization are always managed via the latest standardized items applied to the raw vendor tags, ensuring historical data benefits from the same (and most up-to-date) mapping as your live data.
+3. **Loading** — The NFiles are loaded into Nexalis Cloud, validated, and made available to your users and applications.
+
+---
+
+## Supported Sources
+
+The backfill tool can connect to common industrial data sources, including:
+
+- **OSIsoft / AVEVA PI** historians
+- **Ignition** (Inductive Automation)
+- **Kepware**
+- **SQL databases** (time-series tables)
+- **File exports** (e.g., CSV)
+
+If your source system is not listed, contact us — the NFile format is source-agnostic, and additional connectors can be evaluated.
+
+---
+
+## Accessing Backfilled Data
+
+Once loaded, backfilled data is indistinguishable from live data and is available through both access methods:
+
+- **[Real-Time API](./real-time-api/real-time-api)** — query historical ranges with `FETCH` exactly as you would recent data
+- **Lakehouse Sharing** — backfilled data appears in your shared tables ([Databricks](./lakehouse-data-sharing/databricks-to-databricks), [Fabric](./lakehouse-data-sharing/fabric-to-fabric), Snowflake)
+
+---
+
+## Required Information Before Getting Started
+
+Backfills can be performed by the Nexalis team or by your own teams using the backfill tool. Before getting started, gather the following:
+
+- The **source system** holding the historical data (type, version, and how it can be accessed)
+- The **time range** to backfill (e.g., last 2 years)
+- The **scope**: sites, devices, and tags to include
+- The **expected data resolution** (raw values or aggregated)
+
+---
+
+## FAQ
+
+**Is there a limit on how far back we can backfill?**
+No hard limit — backfills of one or two years are common, and longer ranges are handled on a case-by-case basis depending on data volume.
+
+---
+
+## Support
+
+Questions about backfilling your historical data?
+
+📧 Email: [support@nexalis.io](mailto:support@nexalis.io)
