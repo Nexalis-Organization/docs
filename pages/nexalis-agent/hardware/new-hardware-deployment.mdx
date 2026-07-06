@@ -72,6 +72,10 @@ Bluetooth must stay **on** for the entire process. If the app reports `Bluetooth
 
 ## Step-by-step
 
+<Warning>
+**Do not connect any other cables to the target hardware during flashing.** Only the micro-USB cable to the onboarding device (and power) may be connected. Any other cable — for example a **USB-to-CANbus converter** — can make the flashing process fail. Connect such cables only **after the flash has completed** and the device has been power cycled (step 11).
+</Warning>
+
 ### 1. Log in (or sign up)
 
 Open the app to reach the landing page. Sign in with your Nexalis account email and password. **Don't have an account yet?** Tap **Sign up** to create one (steps 2–3), then come back here to log in.
@@ -150,7 +154,7 @@ When you see **"Flash complete. Power cycle the USB device…"**, the image has 
 
 <img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img21.png" alt="Flash complete, power cycle the device" width="260" />
 
-After the power cycle, the target boots the Nexalis Agent image, connects to the site network, registers in **Nexalis Edge Manager** under the name you chose, and begins streaming data to **Nexalis Cloud**.
+After the power cycle, the target boots the Nexalis Agent image, connects to the site network, registers in **Nexalis Edge Manager** under the name you chose, and begins streaming data to **Nexalis Cloud**. At this point you can connect any other cables the device needs (for example a USB-to-CANbus converter).
 
 ---
 
