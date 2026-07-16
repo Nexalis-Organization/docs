@@ -7,6 +7,10 @@ This guide explains how to onboard a **brand-new edge device** that will run the
 
 No PC, no terminal and no inbound network ports are required.
 
+<Note>
+This tutorial uses the **Compulab IOT-GATE-IMX8PLUS** as the target hardware in its examples, but Nexalis is compatible with many more hardware models — see [Supported hardware](#supported-hardware).
+</Note>
+
 ---
 
 ## How the setup is wired
@@ -19,17 +23,22 @@ There are three pieces involved during onboarding:
 - **The onboarding device** — a small single-board computer (a Raspberry Pi) supplied by Nexalis that runs the **Nexalis Flash** firmware. It does the actual flashing and advertises itself over Bluetooth.
 - **Your phone** — running the **Nexalis Flash** app (iOS or Android), which drives the whole flow.
 
-The target hardware is connected to the onboarding device with a **micro-USB cable**; your phone talks to the onboarding device over **Bluetooth**. Once flashing succeeds and the target is power-cycled, the onboarding device and the phone are no longer needed.
+The target hardware is connected to the onboarding device with a **micro-USB cable**; your phone talks to the onboarding device over **Bluetooth**. For the onboarding process, on the **IOT-GATE-IMX8PLUS**, the micro-USB cable must be plugged into the **PROG** port — **not the Console port**. Once flashing succeeds and the target is power-cycled, the onboarding device and the phone are no longer needed.
 
 ---
 
 ## Supported hardware
 
-The Nexalis Agent runs on standard x86 and ARM industrial edge hardware, so in many cases you can reuse hardware you already have — there's no need to buy a brand-new device for every deployment. When you **do** need to provision new hardware, the model we recommend is the **Compulab IOTG-IMX8PLUS-C1800QM-D2-N16-WB-TIC**:
+The Nexalis Agent runs on standard x86 and ARM industrial edge hardware, so in many cases you can reuse hardware you already have — there's no need to buy a brand-new device for every deployment. When you **do** need to provision new hardware, the model we recommend — and the one used as the example throughout this guide — is the **Compulab IOT-GATE-IMX8PLUS** (PN `IOTG-IMX8PLUS-C1800QM-D4-N32-WB-TIC`):
 
 - Based on the NXP **i.MX 8M Plus** (ARM), fanless and DIN-rail mountable.
-- 2 GB RAM / 16 GB eMMC, Wi-Fi + Ethernet — comfortably above the Nexalis Agent baseline.
-- **Unit cost under \$500**, which makes it a cost-effective default for most sites.
+- 4 GB RAM / 32 GB eMMC, Wi-Fi + Ethernet — comfortably above the Nexalis Agent baseline.
+- **Around \$500 per device**, which makes it a cost-effective default for most sites.
+- Designed for **24/7 continuous industrial operation** — MTBF over **22 years**, with a **5-year warranty**.
+- **Passive (fanless) cooling**, which significantly improves reliability.
+- Industrial temperature option (**TIC**): certified for **-40 °C to +80 °C** operation.
+
+Full specifications are available on the [Compulab product page](https://www.compulab.com/products/iot-gateways/iot-gate-imx8plus-industrial-arm-iot-gateway/).
 
 <Note>
 The Compulab IOTG is our reference device, but the onboarding flow is **not limited to it**. The Nexalis Agent also runs on industrial computers from **Advantech**, **OnLogic** and other mainstream x86/ARM vendors. If you plan to use a different model, confirm compatibility with the Nexalis team first, then follow the same steps below. See also [Technical requirements](/pages/nexalis-agent/technical_requirements).
@@ -45,7 +54,7 @@ Before you start, make sure you have:
 - The **onboarding device** (Raspberry Pi running Nexalis Flash) and its **power supply**.
 - The **micro-USB cable** that links the onboarding device to the target hardware.
 - A phone with the **Nexalis Flash** app installed and **Bluetooth enabled**.
-- A **Nexalis account** — or create one directly in the app (steps 1–3).
+- A **Nexalis Flash account** — or create one directly in the app (steps 1–3).
 
 <div style={{ display: "flex", gap: "20px", flexWrap: "wrap", alignItems: "flex-start" }}>
   <figure style={{ margin: 0, maxWidth: "320px" }}>
@@ -78,7 +87,7 @@ Bluetooth must stay **on** for the entire process. If the app reports `Bluetooth
 
 ### 1. Log in (or sign up)
 
-Open the app to reach the landing page. Sign in with your Nexalis account email and password. **Don't have an account yet?** Tap **Sign up** to create one (steps 2–3), then come back here to log in.
+Open the app to reach the landing page. Sign in with your Nexalis Flash account email and password. **Don't have an account yet?** Tap **Sign up** to create one (steps 2–3), then come back here to log in.
 
 <img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img01.png" alt="Nexalis Flash landing / login screen" width="260" />
 
@@ -135,6 +144,12 @@ Enter a **device name** for the new hardware. This is the name the device will h
 ### 9. Connect the target hardware
 
 When the app shows **"Bluetooth ready. Waiting for a USB device to flash."**, connect the **target hardware to the onboarding device using the micro-USB cable**, and power on the target hardware.
+
+<Warning>
+On the **IOT-GATE-IMX8PLUS**, plug the micro-USB cable into the **PROG** port of the target hardware — **not the Console port**. Flashing only works through the PROG port.
+</Warning>
+
+{/* TODO: add front-panel photo of the IOT-GATE-IMX8PLUS highlighting the PROG port, e.g. /images/nexalis-agent-onboarding-new-hardware-deployment/iot-gate-imx8plus-front.jpg */}
 
 <img src="/images/nexalis-agent-onboarding-new-hardware-deployment/img17.png" alt="Bluetooth ready, waiting for a USB device to flash" width="260" />
 
