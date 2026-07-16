@@ -43,7 +43,8 @@
                     ]
                   },
                   "pages/nexalis-cloud/lakehouse-data-sharing/databricks-to-databricks",
-                  "pages/nexalis-cloud/lakehouse-data-sharing/fabric-to-fabric"
+                  "pages/nexalis-cloud/lakehouse-data-sharing/fabric-to-fabric",
+                  "pages/nexalis-cloud/lakehouse-data-sharing/snowflake-to-snowflake"
                 ]
               }
             ]

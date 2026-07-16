@@ -1,0 +1,118 @@
+# Snowflake-to-Snowflake Data Sharing
+
+**Snowflake-to-Snowflake data sharing** enables seamless sharing of datasets between Nexalis and your own Snowflake account using Snowflake's native **Secure Data Sharing**.
+
+With Secure Data Sharing, no data is ever copied or transferred between accounts. Nexalis grants your account read-only access to the shared tables, and you query them directly with your own virtual warehouse. This provides:
+
+- **Zero data duplication** — Shared data is accessed in-place, no ETL required
+- **Always up-to-date** — You always query the latest data maintained by Nexalis
+- **No storage costs** — Shared data does not count against your Snowflake storage; you only pay for the compute you use to query it
+- **Native Snowflake integration** — Shared tables behave like regular read-only tables and work with all Snowflake features (Snowsight, connectors, BI tools, Snowpark, etc.)
+
+---
+
+## Required Information
+
+To configure Secure Data Sharing, Nexalis needs the following information about your Snowflake account:
+
+- **Organization name**
+- **Account name**
+- **Cloud provider and region** (e.g. `AWS us-east-1`, `Azure westeurope`)
+
+### How to find this information
+
+**In Snowsight:**
+
+1. Open the **account selector** at the bottom of the left navigation menu.
+2. Hover over your account, then click the **link/copy icon** and select **Copy account identifier** (this copies `<organization_name>.<account_name>`, which contains both names).
+
+Alternatively, an `ORGADMIN` or `ACCOUNTADMIN` can go to **Admin » Accounts** to view the organization and account names.
+
+**With SQL:**
+
+```sql
+SELECT CURRENT_ORGANIZATION_NAME(), CURRENT_ACCOUNT_NAME(), CURRENT_REGION();
+```
+
+Once you have this information, share it with Nexalis so we can configure the share for your environment.
+
+---
+
+## Setup Process
+
+1. **Collect the information** listed above
+2. **Share it with Nexalis**
+3. **Nexalis configures** the share and grants it to your account
+4. **Accept the share** in your account and create a database from it (see below)
+
+---
+
+## Accepting the Share
+
+Once Nexalis has granted the share to your account, an `ACCOUNTADMIN` (or a role with the `IMPORT SHARE` privilege) can mount it as a database.
+
+**In Snowsight:**
+
+1. Navigate to **Data Products » Private Sharing**.
+2. On the **Shared with you** tab, locate the share from Nexalis.
+3. Click **Get**, choose a database name (e.g. `NEXALIS`), and select the roles that should have access.
+
+**With SQL:**
+
+```sql
+-- List shares available to your account
+SHOW SHARES;
+
+-- Create a database from the Nexalis share
+CREATE DATABASE NEXALIS FROM SHARE <nexalis_account>.<share_name>;
+
+-- Grant access to the roles that should query the data
+GRANT IMPORTED PRIVILEGES ON DATABASE NEXALIS TO ROLE ANALYST;
+```
+
+---
+
+## After Setup
+
+After mounting the share, you will see the shared tables directly in your Snowflake account:
+
+- `gold_<org_name>_avg_std` — Aggregated time-series data with averages and standard deviations
+- `gold_<org_name>_hf_std` — High-frequency time-series data in standardized format
+
+The shared database is **read-only**: you can query it with any warehouse, but cannot modify it. To transform the data, query it into tables in your own databases.
+
+---
+
+## Example: Querying Shared Data
+
+```sql
+SELECT
+    siteName,
+    deviceID,
+    dataPoint,
+    timestamp,
+    avg_value,
+    std_value
+FROM NEXALIS.PUBLIC.gold_yourcompany_avg_std
+WHERE siteName = 'site_A'
+    AND timestamp >= '2025-01-01'
+ORDER BY timestamp DESC
+LIMIT 100;
+```
+
+---
+
+## Security
+
+- **Read-only access** — Shares are strictly read-only; your account cannot modify Nexalis data
+- **Account-level grants** — Only the account you provide is granted access
+- **Role-based access control** — Within your account, access to the shared database is managed through your own Snowflake roles
+- **Audit** — All queries against shared data appear in your account's standard query history
+
+---
+
+## References
+
+- [Snowflake Secure Data Sharing overview](https://docs.snowflake.com/en/user-guide/data-sharing-intro)
+- [Consuming shared data](https://docs.snowflake.com/en/user-guide/data-share-consumers)
+- [Account identifiers](https://docs.snowflake.com/en/user-guide/admin-account-identifier)
