@@ -1,0 +1,140 @@
+---
+title: "Query Latency"
+---
+
+This page reports the **HTTP round-trip time of read requests** to the Nexalis API (`POST /api/v0/exec`) and shows how to shape queries so they stay fast as you scale.
+
+<Note>
+**How to read these numbers.** Each figure is the full round-trip a consumer experiences: network transport in both directions plus the time the Nexalis engine spends executing the request. Measurements were taken from real users across multiple production environments, on standard internet connections with roughly a **300 ms network floor** to the endpoint; your absolute numbers will shift with your own network path, but the *relative* cost of each query shape carries over. All requests use the **optimized query shape** described below.
+</Note>
+
+---
+
+## Latest-value read benchmarks
+
+The table below measures single API calls that fetch the **last 1** or **last 10** values of a set of distinct data points, using the [optimized query shape](#the-optimized-query-shape) described below. Measured on a **large production environment (~490,000 data points)**, 10 repetitions each, against actively-reporting data points.
+
+| Request shape (single API call) | Median | p95 | Min | Max | Server processing |
+|---|---|---|---|---|---|
+| Last **1** value of **1** data point | 644 ms | 668 ms | 627 ms | 673 ms | 283 ms |
+| Last **1** value of **5** data points | 700 ms | 757 ms | 667 ms | 777 ms | 340 ms |
+| Last **1** value of **10** data points | 750 ms | 803 ms | 723 ms | 813 ms | 362 ms |
+| Last **1** value of **100** data points | 1,485 ms | 1,585 ms | 1,399 ms | 1,622 ms | 899 ms |
+| Last **10** values of **1** data point | 749 ms | 821 ms | 636 ms | 826 ms | 309 ms |
+| Last **10** values of **5** data points | 714 ms | 747 ms | 673 ms | 761 ms | 325 ms |
+| Last **10** values of **10** data points | 784 ms | 815 ms | 743 ms | 826 ms | 384 ms |
+| Last **10** values of **100** data points | 1,489 ms | 1,693 ms | 1,397 ms | 1,759 ms | 917 ms |
+
+**What this tells you:**
+
+- **Up to ~10 data points, latency is around 0.6–0.8 s**, dominated by the fixed network round-trip plus a small per-selector cost. Even **100 data points return in ~1.5 s** in a single call.
+- **History depth is nearly free** — fetching the last 10 values costs essentially the same as the last 1.
+- **The main server-side cost is a per-selector directory scan, which scales with the size of your environment, not with how much data you request.** On this ~490,000-data-point environment each selector costs roughly **300 ms**; on a small (~1,500-data-point) environment the same scan is ~6 ms and the identical reads run in **~0.4–0.7 s**.
+- **This is why 100 data points still return in ~1.5 s:** past ~50 data points the query is split into a few narrower selectors (see [the optimized query shape](#the-optimized-query-shape) below), which keeps that per-selector scan cost down.
+- **The difference between round-trip and server processing is network overhead** (~300 ms here). On a low-latency path, reads get proportionally faster.
+- Use the **p95** column, not the median, for timeout and polling-budget planning.
+
+<Note>
+These numbers are a large improvement over earlier measurements (a 100-data-point read dropped from ~3.7 s to ~1.5 s) — the gain comes entirely from following the optimized query shape below.
+</Note>
+
+---
+
+## Long-range read benchmarks
+
+The table above covers small, latest-value reads. Historical pulls behave very differently: latency is set by **payload size**, which grows with the number of tags, the length of the window, and signal density. The figures below were measured on a large production environment (tens of thousands of data points), reading through `exec` FETCH with a single regex selector:
+
+| Query shape | Values returned | Payload | Round-trip |
+|---|---|---|---|
+| 10 tags × 7 days | ~290k | ~8 MB | ~1.9 s |
+| 10 tags × 90 days | ~4.4–4.6M | ~124–132 MB | **44–50 s first read**, ~9–11 s cached |
+| 100 tags × 90 days | ~7–10.4M | ~215–339 MB | ~60–68 s first read (cached not measured) |
+
+**What this tells you:**
+
+- **Long reads are dominated by payload transfer, not selector count.** A 90-day, 100-tag pull moves hundreds of MB — that transfer, not the query itself, sets the time.
+- **The first read of data older than ~21 days pays a one-time cold-tier cost** (44–50 s here), dropping to ~9–11 s on a cached warm repeat. Small recent windows read warm at any age in ~1–2 s. See [Scaling & Best Practices](./scaling-best-practices) for the storage-tier behavior.
+- **Payload — and therefore time — scales with density.** The same 100-tag × 90-day query returned ~215 MB in a quiet-period selection but ~339 MB (and ~10.4M values) in an active-period one. Size for your peak.
+- For long histories, **split large pulls into smaller per-tag or small-batch requests**, and consider parallel chunks — see [Scaling & Best Practices](./scaling-best-practices).
+
+---
+
+## The optimized query shape
+
+Every benchmark on this page follows two rules. Getting either wrong dominates the result.
+
+**Rule 1 — as few selectors as possible, in one API call.** Each selector triggers a fixed directory scan on the server (~300 ms on a ~490,000-data-point environment, far less on a smaller one), so this cost scales with environment size rather than with how much data you ask for. Collapse many data points into a single selector using a regex alternation on `dataPoint`, and send everything in one request rather than one FETCH per tag:
+
+```warpscript
+{
+  'token' 'YOUR_READ_TOKEN'
+  'class' 'nx.value'
+  'labels' { 'dataPoint' '~^(TotW|TotVar|Hz)$' }   // one selector, many data points
+  'start' $now 86400 s -                            // always bound the window
+  'end' $now
+  'count' 1                                         // and cap the result
+} FETCH
+```
+
+Past **~50 data points**, do the opposite of collapsing: **split into a few selectors grouped by `siteName` + `deviceID`.** Each regex is then matched against a much smaller candidate set, which more than pays back the extra directory scans. In benchmarking, 100 data points returned in **~1,440 ms** split by device versus **~1,770 ms** as one flat selector; below ~50, the single-selector form wins.
+
+**Rule 2 — always bound the time window and cap with `count`.** A count read with no `start`/`end` has to walk backwards through storage for every data point until it finds a value, so its cost grows with how *stale* the data is — on a large environment that shape can time out entirely (the identical query returned in under a second when bounded, but failed with an HTTP 502 unbounded). Choose the window generously: it is effectively free for count-bounded reads (1 hour and 7 days both read in ~1.4 s for 100 data points), but too short and quiet tags are **silently omitted** — a 5-minute window returned only 57 of 100 requested tags.
+
+See [Scaling & Best Practices](./scaling-best-practices) for how these rules extend to large historical pulls, and the point at which batching inverts.
+
+---
+
+## Ready-to-use patterns
+
+### Latest value of every tag (real-time polling)
+
+Fetch the most recent value of every tag matching a selector — ideal for a dashboard refreshing every 30 seconds. `'count' 1` returns just the newest value per data point:
+
+```bash
+curl -s -X POST "$NEXALIS_ENDPOINT" \
+  -H "Content-Type: text/plain; charset=UTF-8" \
+  --data "{ 'token' '$NEXALIS_TOKEN' 'class' 'nx.value' 'labels' { 'deviceID' 'YOUR_DEVICE' } 'count' 1 } FETCH NONEMPTY @nexalis/scale"
+```
+
+Set `NEXALIS_ENDPOINT` to `https://yourcompany.app.nexalis.io/api/v0/exec` and `NEXALIS_TOKEN` to your READ token.
+
+To keep the response small and skip tags that haven't changed recently, bound the lookback to a recent window — here the last 5 minutes — while still returning only the latest value per tag (`'count' 1`). `NONEMPTY` drops tags with no value in the window:
+
+```bash
+curl -s -X POST "$NEXALIS_ENDPOINT" \
+  -H "Content-Type: text/plain; charset=UTF-8" \
+  --data "{ 'token' '$NEXALIS_TOKEN' 'class' 'nx.value' 'labels' { 'deviceID' 'YOUR_DEVICE' } 'start' NOW 5 m - 'end' NOW 'count' 1 } FETCH NONEMPTY @nexalis/scale"
+```
+
+For a large site (~75,000 data points), this single batched request returns the latest value of every recently-active tag in roughly **20 seconds**.
+
+### One aggregated value per tag for a whole site
+
+Return a single 10-minute average per data point across an entire large site (~75,000 data points) in one batched request. This is the fastest way to snapshot a full site — around **3 minutes** end to end:
+
+```bash
+curl -s -X POST "$NEXALIS_ENDPOINT" \
+  -H "Content-Type: text/plain; charset=UTF-8" \
+  --data "{ 'token' '$NEXALIS_TOKEN'
+           'start' NOW 600 s / TOLONG 600 s * 600 s -
+           'end'   NOW 600 s / TOLONG 600 s *
+           'bucket_size' 10
+           'labels' { 'deviceID' 'YOUR_DEVICE' } }
+         @nexalis/fetch_trapezoidal_averages"
+```
+
+<Note>
+For **short and medium windows**, batching all tags into one request is fastest. For **long historical ranges** (months of data), do the opposite — split into smaller per-tag or small-batch requests to keep each response manageable and avoid timeouts. The [Scaling & Best Practices](./scaling-best-practices) page explains exactly where the crossover lies.
+</Note>
+
+---
+
+## Key takeaways
+
+- A single-tag latest-value read returns in **~0.64 s**; up to ~10 tags stays under ~0.8 s, and 100 tags in one call in **~1.5 s**.
+- **Group data points into as few selectors as possible and send them in one API call** — but past ~50 data points, split into device-grouped selectors to keep the per-selector directory scan cheap.
+- **Always bound the time window and cap with `count`** — an unbounded read can time out on a large environment. Choose the window generously so quiet tags aren't silently dropped.
+- Plan timeouts against the **p95**, and remember your network path sets the floor.
+- The batching rule holds for short/medium windows; long histories call for the opposite strategy.
+
+See the [Real-Time API reference](../nexalis-cloud/real-time-api/real-time-api) for the full query language, and [Scaling & Best Practices](./scaling-best-practices) for large-scale patterns.
