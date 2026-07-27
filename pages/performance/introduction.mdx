@@ -1,0 +1,71 @@
+---
+title: "Performance & Scalability"
+---
+
+The Nexalis Platform is built to deliver industrial data with **low latency at scale**, end to end — from the **Nexalis Agent** ingesting values at the site to **Nexalis Cloud** serving that data through the API. This section documents how the platform performs in practice — how quickly data becomes available after it is ingested at the site, how fast the API answers read requests, and how performance evolves as an environment grows from a handful of tags to hundreds of thousands.
+
+All figures on the following pages come from **live measurement campaigns on production environments**, using the Nexalis Cloud API. Environment and customer names have been removed; the numbers and the behavior they describe are representative of what any consumer of the API experiences.
+
+---
+
+## What we measure
+
+Performance comes down to two platform metrics:
+
+| Metric | Question it answers | Page |
+|--------|--------------------|------|
+| **Ingestion latency** | Once a value is ingested at the site, how long until you can read it through the API? | [Ingestion Latency](./ingestion-and-freshness) |
+| **Query latency** | How long does an API read request take to return? | [Query Latency](./query-latency) |
+
+Cutting across both is **scaling behavior** — how these metrics change as data volume and time ranges grow, and how to query efficiently at scale. This is covered on the [Scaling & Best Practices](./scaling-best-practices) page.
+
+A related concept, **data freshness** — how recently each signal last changed — is often confused with latency but is a property of *your* signals, not the platform. It is explained (not benchmarked) on the [Ingestion Latency](./ingestion-and-freshness) page.
+
+<Note>
+Nexalis pushes data **on change** (report by exception) with a minimum heartbeat of roughly one value per hour per signal. A tag that hasn't updated recently is usually a quiet signal — a value inside its deadband or a slow-cadence measurement — not a platform delay. Keep this in mind when a tag's latest value looks older than you expect.
+</Note>
+
+---
+
+## Headline numbers
+
+For a typical consumer:
+
+- **Ingestion latency** — a value is readable through the API a **median of ~5 seconds** (95th percentile ~7 s) after it is timestamped at the site.
+- **Reading the most recent value of one tag** — a single API call returns in **~0.64 seconds** (full request-to-response round-trip).
+- **Reading the most recent value of 100 tags in one batched call** — **~1.5 seconds**.
+- **Latest 10-minute average for every tag of a large site (~75,000 data points)**, in a single batched request — **~3 minutes**.
+- **Latest value of every tag active in the last 5 minutes, across a large site (~75,000 data points)**, in one batched call — **~20 seconds**.
+
+<Note>
+Absolute latency depends on your network path to the endpoint. The read figures above were measured from real users across multiple production environments and include roughly **300 ms of network round-trip**, so your own times will differ. Use these numbers as ballpark figures rather than guarantees; they are drawn from the detailed benchmark tables on the [Query Latency](./query-latency) page.
+</Note>
+
+---
+
+## Performance depends on the size of your query
+
+The single biggest driver of query performance is the **total volume of values a request returns** — the number of data points it addresses multiplied by how many values each has recorded over the requested time window. What matters is the size of the **query**, not the size of your environment: your deployment may span many sites and hundreds of thousands of data points, but a request is only ever as expensive as the slice of that it actually pulls. You control this through how broadly you scope your selectors and time window. As a rough guide by query size:
+
+| Query size | Data points addressed | What to expect |
+|------|-----------|-----------------|
+| **Small** | up to ~2,000 data points | Almost always sub-second to a few seconds. |
+| **Medium** | ~2,000–15,000 data points (e.g. one site or substation) | Batched reads stay fast (a few seconds); this is the sweet spot for the batching patterns described later. |
+| **Large** | 15,000–75,000+ data points in a single request | Measured in seconds-to-minutes, and dominated by **payload transfer** rather than the number of data points. Query strategy matters most here. |
+
+Two other factors shape payload — and therefore latency — on top of the number of data points:
+
+- **Signal density.** A busy site can emit **10–15× more values per tag** in its active period than when quiet (for example, a solar site in daylight versus at night). Payload sizing should always assume peak rates. In our test populations the busiest tags exceeded **1,000 values per tag per day**, but real-world density can be substantially higher depending on how frequently your signals change and how fast the source samples them — size against your own peak rates, not this figure.
+- **Time range and data age.** Recent data (roughly the last 21 days) is served from a hot storage tier and reads fast. Older history is served from a cold tier with a larger first-touch cost. See [Scaling & Best Practices](./scaling-best-practices).
+
+The rule of thumb: **for short and medium time windows, batch aggressively; for long histories, split into smaller requests.** The rest of this section quantifies exactly when and why.
+
+---
+
+## Where to go next
+
+- **[Ingestion Latency](./ingestion-and-freshness)** — how quickly site data becomes available, and why that differs from data freshness.
+- **[Query Latency](./query-latency)** — full benchmark tables for read requests and the query shapes that keep them fast.
+- **[Scaling & Best Practices](./scaling-best-practices)** — batching, parallelization, storage tiers, and recommended patterns per use case and environment size.
+
+For API access and support, contact [contact@nexalis.io](mailto:contact@nexalis.io).

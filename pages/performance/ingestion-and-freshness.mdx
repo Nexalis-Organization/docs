@@ -1,0 +1,64 @@
+---
+title: "Ingestion Latency"
+---
+
+**Ingestion latency** is the platform metric that answers "how quickly does new data become available?" — once a value is ingested at the site, how long until you can read it through the API. This page measures it, and then explains why it should not be confused with **data freshness** — a related but distinct concept.
+
+---
+
+## Ingestion latency
+
+**Definition:** once a value is ingested at the site by the Nexalis Agent, how long until you can read it through the API (`/api/v0/exec`).
+
+**How it is measured.** The Nexalis Agent emits a heartbeat signal roughly every 10 seconds. That heartbeat travels in the **same message queue as regular data point messages**, so its arrival time is representative of all data. Each heartbeat arrival was detected with sub-second polling, and all timings use the Nexalis **server clock** — there is no client clock involved, so the numbers are free of client-side skew.
+
+### Results
+
+Measured across live sites (heartbeat cadence ~10 s):
+
+| Metric | Value |
+|--------|-------|
+| Fastest observed (best case, no batching wait) | **~0.5 s** |
+| **Median ingestion latency** (typical) | **~5 s** |
+| **95th percentile** (conservative planning figure) | **~7 s** |
+| Slowest observed in the campaign | **~9 s** |
+| Measurement precision (per-event window) | ~0.6 s |
+
+**Interpretation:**
+
+- The **median ~5 s** is the time you should expect from "value ingested at site" to "value readable via API" under normal conditions. It includes the Nexalis Agent's normal message-batching cycle.
+- The **best case ~0.5 s** occurs when a message leaves the Nexalis Agent immediately — it reflects pure transport, cloud ingestion, and indexing with no batching wait.
+- Use the **p95 (~7 s)** when sizing alerting or real-time control loops that depend on data availability.
+- Latency was stable across sites of different sizes — ingestion latency does **not** grow with the number of tags in your environment.
+
+<Note>
+Ingestion latency is independent of how you query. It is the lower bound on how fresh any read can possibly be: even a query that runs instantly cannot return a value sooner than it was ingested.
+</Note>
+
+---
+
+## Don't confuse latency with data freshness
+
+When a tag shows a value that is a few minutes old, people sometimes read that as a platform delay. It usually isn't. There are two distinct things at play:
+
+- **Ingestion latency** (above) — how long the *platform* takes to make a new value readable. Measured in **seconds**, and constant regardless of environment size.
+- **Data freshness** — how long ago each data point *actually changed*. This is set by **your process and signals**, not by Nexalis.
+
+Nexalis collects data by **trigger on value change** (report by exception): a data point only produces a new value when its measurement moves outside its deadband, or when the minimum ~1-value-per-hour heartbeat fires. So a data point that hasn't updated in minutes is almost always a **quiet signal** — a stable measurement, a value inside its deadband, or a slow-cadence tag — not a lost or delayed one.
+
+This is why freshness varies enormously and is **not a platform benchmark**: a busy site will show most tags updating within seconds, while a quieter environment will legitimately show many tags unchanged for minutes at a time. Both are behaving correctly.
+
+<Note>
+**Practical rule.** Ingestion latency is the lower bound on how fresh any read can possibly be — even an instant query cannot return a value sooner than it was ingested. Data freshness sits on top of that and reflects how often your signals move. When a value looks "old," check whether the underlying signal actually changed before suspecting the platform.
+</Note>
+
+---
+
+## Putting it together
+
+For a real-time use case — say, polling the latest values of all tags every 30 seconds — the data you read will be:
+
+- at most **~5–7 s** behind the site (ingestion latency), plus
+- however long since each signal last actually changed (freshness, driven by the signal type).
+
+Ingestion latency doesn't grow with the number of tags, so the same real-time responsiveness holds whether you consume one site or many. For the query side of that loop, see [Query Latency](./query-latency).

@@ -1,0 +1,116 @@
+---
+title: "Scaling & Best Practices"
+---
+
+This page explains how read performance behaves as data volume and time ranges grow, and gives concrete rules for querying efficiently at scale. It draws on measurement campaigns run against large production environments (tens of thousands of data points per site, up to hundreds of megabytes per query).
+
+The single idea underneath everything here: **the cost of a read is driven either by selector resolution or by payload transfer, and which one dominates depends on your time window.** Get that right and everything else follows.
+
+---
+
+## 1. Batch aggressively for short and medium windows
+
+Server-side cost is dominated by **selector resolution**: each selector triggers a directory scan whose cost grows with the size of your environment — from a few milliseconds on a small tenant to a few hundred on a large one — but is independent of how much data the selector returns. So the number of selectors, not the number of tags, drives latency for short and medium windows.
+
+Latency for **1,000 arbitrary data points**, by call shape:
+
+| Call shape | 5-min window | 1-hour window | 24-hour window |
+|---|---|---|---|
+| 1,000 separate FETCH statements (one per data point) | 74.8 s | 74.0 s | 81.3 s |
+| **One FETCH, single 1,000-way regex selector** | **2.5 s** | **2.7 s** | **3.5 s** |
+
+Collapsing 1,000 individual reads into one batched call cuts latency **by more than an order of magnitude**. The rule is to batch many tags into a **single API call with as few selectors as the data allows** — a regex alternation on `dataPoint` (`~^(tagA|tagB|…)$`) or a broad structural prefix for a whole device or site. For large sets, "as few as the data allows" means a handful of device-grouped selectors rather than one giant regex — see the refinement below.
+
+<Note>
+This is the same principle as the [Query Latency](./query-latency) benchmarks: keep the selector count low and send one API call. Two refinements from the latest measurements: past **~50 data points**, splitting into a few selectors grouped by `siteName` + `deviceID` beats one giant regex (each regex then scans a narrower candidate set), and you should **always bound the time window and cap with `count`** — an unbounded read can time out on a large environment. It holds for **short and medium time windows** — see the inversion below for long histories.
+</Note>
+
+---
+
+## 2. …but split long histories into smaller requests
+
+The batching rule **inverts for long time ranges**. At the observed transfer rate (~12 MB/s), a selector's overhead is worth only about **a megabyte of payload**. Once a single data point carries multiple megabytes — for example months of history for a dense tag — transfer time dominates completely and selector overhead becomes irrelevant.
+
+In that regime, per-data-point or small-batch calls cost essentially the same as one giant call, while giving you smaller, more robust responses that are easier to retry and less likely to time out.
+
+| Your time window | Recommended shape |
+|---|---|
+| Seconds to a few days | **One batched request**, many tags in a single regex selector |
+| Weeks to months of history | **Split** into per-tag or small-batch requests; manage per-call payload, not selector count |
+
+This is exactly the guidance behind the two curl patterns on the [Query Latency](./query-latency) page: batch everything for a short window, split for long ranges.
+
+---
+
+## 3. Signal density sets your payload — assume peak rates
+
+Payload size, and therefore latency, is set by how many values your tags actually emit. Because collection is **report-by-exception**, this varies enormously. As an example, here is the density measured on one dense solar site — treat it as an illustration of the *range*, not a target for your own deployment:
+
+| Density metric (example: one solar site) | Value |
+|---|---|
+| Average values per tag per 24 h | ~180 |
+| Median values per tag per 24 h | ~24 (half the tags log 24 values/day or fewer) |
+| p99 values per tag per 24 h | ~1,335 |
+| Daylight vs. night rate (solar site) | **12–15× higher in daylight** |
+| Share of daily volume produced in daylight hours | ~92% |
+
+The swing between busy and quiet periods is the key planning point: a query over a site's active window can return **10× more data** than the same query when it's quiet (for a solar site, daytime versus night). **Always size payloads and timeouts against peak rates**, not averages.
+
+<Note>
+These figures come from one test population and are a **lower bound**, not a ceiling. Tags that change frequently, or are sampled at high frequency at the source, can log many thousands of values per day. Size against your own deployment's peak rates rather than the numbers above.
+</Note>
+
+---
+
+## 4. Parallelize moderately
+
+Splitting a large pull into several simultaneous chunk requests gives a **1.5–2× speedup**, plateauing at around **4 concurrent calls**:
+
+| Concurrency | 1-hour pull | 24-hour pull |
+|---|---|---|
+| 1 (single big call) | 2.8 s | 7.8 s |
+| 4 parallel chunks | 1.6 s | 4.6 s |
+| 8 parallel chunks | 1.4 s | 4.3 s |
+
+The bottleneck is **client bandwidth**, not the server — transfer rate rose from ~12 MB/s (single) to ~19 MB/s (8 parallel) as the client's own link saturated. The platform absorbed 8 concurrent multi-tens-of-MB pulls with no errors and a tight latency spread. A better-connected client (e.g. a cloud VM near the endpoint) would likely scale further.
+
+**Practical rule:** 4–8 parallel chunk requests is the sweet spot. Partition your tags into chunks by structural prefix (device / site) so each chunk is one clean selector.
+
+---
+
+## 5. Storage tiers: recent data is hot, older data is cold
+
+Nexalis serves recent data from a **hot storage tier** (roughly the **last 21 days**) and older history from a cold tier.
+
+- **Hot-tier reads are fast and consistent.** Small recent windows read in a constant 1–2 seconds at any tag count within a site.
+- **Cold-tier reads carry a first-touch cost.** The first read of older history pays a one-time penalty — in benchmarking, a cold read of a 90-day range took **44–50 s**, versus **9–11 s warm** for the same call once cached. Small 7-day windows read warm at any age in a constant ~1–2 s. The full long-range benchmark table is on the [Query Latency](./query-latency#long-range-read-benchmarks) page.
+
+<Note>
+**Recent and historical data are read the same way — through `exec` FETCH (`/api/v0/exec`).** There is no separate endpoint or setting for old data: a query that reaches into the cold tier simply pays the one-time first-touch cost shown above, then reads fast on warm repeats. Just budget for a slower first read when a request touches data older than ~21 days.
+</Note>
+
+Long-range reads work at real scale — over 10 million values (300+ MB) returned in a single call — but this is the regime where you should **manage per-call payload** (rule 2) rather than chase selector count.
+
+---
+
+## Recommended patterns at a glance
+
+| Use case | Recommended pattern |
+|---|---|
+| **Real-time latest values, all tags** (poll every ~30 s) | One batched `FETCH` with `'count' 1` over a broad selector; add `@nexalis/scale`. Sub-second to a few seconds. |
+| **Latest value of recently-active tags** (short lookback) | One batched request, all tags in a single selector, bounded to a recent window with `'count' 1`. |
+| **One aggregated value per tag for a whole site** | One batched macro call with ≥ 10-minute buckets. ~3 minutes for a ~75,000-data-point site. |
+| **Analytical pull, recent data (≤ ~21 days)** | Batch into one selector; use 4–8 parallel chunks for large sites; read from the hot tier. |
+| **Historical data (> 21 days)** | `exec` FETCH only; split into per-tag or small-batch requests; expect a cold first read, fast warm repeats. |
+
+---
+
+## Summary of the rules
+
+1. **Short/medium windows:** batch many tags into one selector, one API call.
+2. **Long histories:** split into smaller requests; payload, not selector count, is the cost.
+3. **Size for peak density**, which can be 10× the average (e.g. daytime on a solar site).
+4. **Parallelize 4–8 ways** for big pulls; the limit is your bandwidth.
+5. **Recent data is hot and fast;** data older than ~21 days is cold (first-touch penalty) and must use `exec` FETCH.
+
+For the underlying query language and examples, see the [Real-Time API reference](../nexalis-cloud/real-time-api/real-time-api) and [Nexalis Macros](../nexalis-cloud/real-time-api/nexalis-macros).

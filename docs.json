@@ -85,6 +85,15 @@
             ]
           }
         ]
+      },
+      {
+        "group": "Performance",
+        "pages": [
+          "pages/performance/introduction",
+          "pages/performance/ingestion-and-freshness",
+          "pages/performance/query-latency",
+          "pages/performance/scaling-best-practices"
+        ]
       }
     ]
   }
