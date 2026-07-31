@@ -344,7 +344,7 @@ let
     Start = "'2026-01-01T00:00:00Z'",
     End   = "'2026-01-01T04:00:00Z'",
     BucketSize  = "30",
-    Labels = "{ 'dataPoint' 'ns=2;s=[APX1]/PV/BLK-22/INV-15/VAL_P_KW' }",
+    Labels = "{ 'dataPoint' 'ns=2;s=[PLANT1]/PV/BLK-22/INV-15/VAL_P_KW' }",
 
     Result = fnFetchTrapezoidalAverages(Token, Start, End, BucketSize, Labels)
 in
