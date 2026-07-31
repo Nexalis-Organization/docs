@@ -357,9 +357,9 @@ Grafana logs a reason at startup — check it with `journalctl -u grafana-server
 |---|---|
 | `Nexalis URL is missing` | Fill in the endpoint, for example `https://yourcompany.app.nexalis.io` |
 | `Nexalis READ token is missing` | Paste your token. After a **Reset** the field must be filled in again. |
-| `Nexalis rejected the READ token` | The token is wrong, or belongs to a different tenant than the URL. Check both together. |
-| `Nexalis token expired` | Request a new READ token from [contact@nexalis.io](mailto:contact@nexalis.io). |
-| `Nexalis API unreachable` | The Grafana server cannot reach the endpoint. Check DNS, egress firewall rules, and any outbound proxy. |
+| `the Nexalis READ token was rejected` | The token is wrong, or belongs to a different tenant than the URL. Check both together. |
+| `the Nexalis READ token has expired` | Request a new READ token from [contact@nexalis.io](mailto:contact@nexalis.io). |
+| `cannot reach the Nexalis API` | The Grafana server cannot reach the endpoint. Check DNS, egress firewall rules, and any outbound proxy. |
 | `Connected, but this token can see no time series` | The endpoint and token are valid, but the token grants no read access to this tenant's data. Confirm it is a READ token issued for this endpoint. |
 
 ### A panel shows no data
@@ -374,9 +374,11 @@ Work from the widest query inwards:
 
 ### Other errors
 
-**`Nexalis returned too much data` / `Nexalis returned more than 50 MB`.** The query matched too many series or too long a range. Narrow the filters or shorten the time range. Switching from **Raw values (scaled)** to **Bucketized values** usually fixes it on its own.
+**`too much data returned` / `response exceeded 50 MB`.** The query matched too many series or too long a range. Narrow the filters or shorten the time range. Switching from **Raw values (scaled)** to **Bucketized values** usually fixes it on its own.
 
-**`Nexalis rate limit reached (HTTP 429)`.** Too many calls in too short a window. Lower the dashboard refresh rate, or reduce the number of panels querying at once.
+**`rate limited by Nexalis (HTTP 429)`.** Too many calls in too short a window. Lower the dashboard refresh rate, or reduce the number of panels querying at once.
+
+**`query failed on Nexalis (HTTP 500)`.** The catch-all for a WarpScript error. The rest of the message is Warp10's own, naming the function that failed — most often a **Raw WarpScript** query with a typo, or a macro called with the wrong parameters. [Common Errors](./common-errors) lists the API-level causes.
 
 **A boolean or text tag shows as a flat line at 0 and 1.** That is expected: `Discrete` measurements such as alarm states and `nexalisConnectionStatus` are plotted as 1 for true and 0 for false. The **State timeline** visualisation reads better than a time series for these. Text-valued tags come through as text, best viewed in a **Table**.
 
