@@ -45,17 +45,29 @@ Each release also publishes a `.zip.sha1` file if you want to verify the downloa
 
 ### Step 2: Unzip it into the Grafana plugins directory
 
-The default plugins directory is `/var/lib/grafana/plugins`. If you are not sure, check the `plugins` setting under `[paths]` in your `grafana.ini`.
+The default plugins directory is `/var/lib/grafana/plugins`. To confirm the path your server actually uses, ask Grafana — it logs every path at startup:
 
 ```bash
-VERSION=1.1.0   # the version from Step 1, without the leading "v"
-
-cd /var/lib/grafana/plugins
-curl -sSL -O "https://github.com/Nexalis-Organization/nexalis-grafana-plugin-releases/releases/download/v$VERSION/nexalis-nexalis-datasource-$VERSION.zip"
-unzip "nexalis-nexalis-datasource-$VERSION.zip" && rm "nexalis-nexalis-datasource-$VERSION.zip"
+journalctl -u grafana-server | grep "Path Plugins"
 ```
 
-Run this as a user that can write to the plugins directory — on most installations that means `sudo`, and afterwards the folder must still be readable by the `grafana` user.
+<Note>
+**On a fresh Grafana, this directory does not exist yet.** Grafana creates `/var/lib/grafana` for its database, but `plugins/` only appears once a plugin has been installed, so `cd /var/lib/grafana/plugins` fails with *"No such file or directory"*. The `mkdir -p` below handles that.
+</Note>
+
+```bash
+VERSION=1.1.0                      # the version from Step 1, without the leading "v"
+PLUGINS=/var/lib/grafana/plugins
+
+sudo mkdir -p "$PLUGINS"
+curl -sSL -o /tmp/nexalis-plugin.zip \
+  "https://github.com/Nexalis-Organization/nexalis-grafana-plugin-releases/releases/download/v$VERSION/nexalis-nexalis-datasource-$VERSION.zip"
+sudo unzip -q /tmp/nexalis-plugin.zip -d "$PLUGINS"
+rm /tmp/nexalis-plugin.zip
+sudo chown -R grafana:grafana "$PLUGINS/nexalis-nexalis-datasource"
+```
+
+The download goes to `/tmp` as your own user, and only the unzip needs `sudo` — the plugins directory is owned by root. The final `chown` matters: Grafana runs as the `grafana` user and silently skips a plugin directory it cannot read.
 
 You should end up with a `nexalis-nexalis-datasource/` folder containing `plugin.json`, `module.js` and several `gpx_nexalis_datasource_*` backend binaries.
 
@@ -114,9 +126,31 @@ The backend binaries must be executable. If you built the folder on Windows or c
 
 ### Updating and removing
 
-To update, delete the old `nexalis-nexalis-datasource/` folder, unzip the newer release in its place, and restart Grafana. Your configured data sources and dashboards are stored in Grafana's database, so they survive the upgrade untouched.
+To update, replace the folder with the newer release and restart Grafana:
 
-To remove the plugin, delete the folder, drop the ID from `allow_loading_unsigned_plugins`, and restart.
+```bash
+VERSION=1.2.0                      # the version you are moving to
+PLUGINS=/var/lib/grafana/plugins
+
+curl -sSL -o /tmp/nexalis-plugin.zip \
+  "https://github.com/Nexalis-Organization/nexalis-grafana-plugin-releases/releases/download/v$VERSION/nexalis-nexalis-datasource-$VERSION.zip"
+sudo rm -rf "$PLUGINS/nexalis-nexalis-datasource"
+sudo unzip -q /tmp/nexalis-plugin.zip -d "$PLUGINS"
+rm /tmp/nexalis-plugin.zip
+sudo chown -R grafana:grafana "$PLUGINS/nexalis-nexalis-datasource"
+sudo systemctl restart grafana-server
+```
+
+Deleting the old folder rather than unzipping over it matters — it clears out files a newer release no longer ships. Your data sources and dashboards live in Grafana's own database, so they survive the upgrade untouched, and `grafana.ini` does not need changing again.
+
+To remove the plugin entirely:
+
+```bash
+sudo rm -rf /var/lib/grafana/plugins/nexalis-nexalis-datasource
+sudo systemctl restart grafana-server
+```
+
+Then drop the ID from `allow_loading_unsigned_plugins`.
 
 ---
 
