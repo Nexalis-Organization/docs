@@ -37,22 +37,39 @@ The release contains backends for Linux, macOS and Windows, on both amd64 and ar
 
 ## Installation
 
-### Step 1: Find the latest version
+Whichever way you run Grafana, the shape is the same: put the plugin folder where Grafana looks for plugins, tell Grafana to trust it because it is not signed yet, and restart. Only the mechanics differ, so pick the track that matches your setup:
+
+- **[Grafana as a system package](#track-a-grafana-installed-as-a-package)** — installed with `apt` or `yum`, managed by `systemd`
+- **[Grafana in Docker](#track-b-grafana-in-docker)** — `docker run` or Docker Compose
+
+### Step 1: Find the latest version (both tracks)
 
 Open the [releases repository](https://github.com/Nexalis-Organization/nexalis-grafana-plugin-releases/releases) and note the version number of the newest release — the tag looks like `v1.1.0`, and the download is `nexalis-nexalis-datasource-1.1.0.zip`.
 
-Each release also publishes a `.zip.sha1` file if you want to verify the download.
+Each release also publishes a `.zip.sha1` file if you want to verify the download:
 
-### Step 2: Unzip it into the Grafana plugins directory
+```bash
+sha1sum -c nexalis-nexalis-datasource-1.1.0.zip.sha1
+```
 
-The default plugins directory is `/var/lib/grafana/plugins`. To confirm the path your server actually uses, ask Grafana — it logs every path at startup:
+<Note>
+Whatever you do, keep the `nexalis-nexalis-datasource/` folder name from the zip. Grafana identifies a plugin by the `plugin.json` inside its own folder — renaming or flattening the folder stops it loading.
+</Note>
+
+---
+
+## Track A: Grafana installed as a package
+
+### A1. Unzip into the plugins directory
+
+The default is `/var/lib/grafana/plugins`. To confirm the path your server actually uses, ask Grafana — it logs every path at startup:
 
 ```bash
 journalctl -u grafana-server | grep "Path Plugins"
 ```
 
 <Note>
-**On a fresh Grafana, this directory does not exist yet.** Grafana creates `/var/lib/grafana` for its database, but `plugins/` only appears once a plugin has been installed, so `cd /var/lib/grafana/plugins` fails with *"No such file or directory"*. The `mkdir -p` below handles that.
+**On a fresh Grafana this directory does not exist yet.** Grafana creates `/var/lib/grafana` for its database, but `plugins/` only appears once a plugin has been installed, so `cd /var/lib/grafana/plugins` fails with *"No such file or directory"*. The `mkdir -p` below handles that.
 </Note>
 
 ```bash
@@ -71,62 +88,28 @@ The download goes to `/tmp` as your own user, and only the unzip needs `sudo` �
 
 You should end up with a `nexalis-nexalis-datasource/` folder containing `plugin.json`, `module.js` and several `gpx_nexalis_datasource_*` backend binaries.
 
-<Note>
-Unzip into the plugins directory itself, keeping the `nexalis-nexalis-datasource/` folder name. Grafana identifies a plugin by the `plugin.json` inside its own folder — renaming or flattening the folder stops it loading.
-</Note>
+### A2. Allow the plugin to load
 
-### Step 3: Allow the plugin to load
-
-The plugin is not signed yet, so Grafana needs to be told to trust it. Add its ID to `grafana.ini`:
+The plugin is not signed yet, so add its ID to `grafana.ini`:
 
 ```ini
 [plugins]
 allow_loading_unsigned_plugins = nexalis-nexalis-datasource
 ```
 
-If you run Grafana in a container or manage it with environment variables, the equivalent is:
-
-```bash
-GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=nexalis-nexalis-datasource
-```
-
 If you already allow other unsigned plugins, add this ID to the existing comma-separated list rather than replacing it.
 
-### Step 4: Restart Grafana
+### A3. Restart Grafana
 
 ```bash
 sudo systemctl restart grafana-server
 ```
 
-Grafana reads `plugin.json` only at startup, so a restart is required — after this install and after every upgrade.
+Grafana reads `plugin.json` only at startup, so a restart is required — after this install and after every upgrade. Now jump to [Confirm Grafana found it](#confirm-grafana-found-it).
 
-### Step 5: Confirm Grafana found it
+### Updating (package)
 
-In Grafana, go to **Connections → Data sources → Add new data source** and search for `Nexalis`. If it appears, the plugin is loaded and you can move on to the next section.
-
-If it does not appear, see [The Nexalis data source does not appear](#the-nexalis-data-source-does-not-appear) below.
-
-### Running Grafana in Docker
-
-Mount the unzipped plugin into the container and allow it in the same step:
-
-```yaml
-services:
-  grafana:
-    image: grafana/grafana:12.3.0
-    ports:
-      - "3000:3000"
-    environment:
-      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: nexalis-nexalis-datasource
-    volumes:
-      - ./nexalis-nexalis-datasource:/var/lib/grafana/plugins/nexalis-nexalis-datasource
-```
-
-The backend binaries must be executable. If you built the folder on Windows or copied it through a system that dropped the permission bits, run `chmod +x nexalis-nexalis-datasource/gpx_*` before starting the container.
-
-### Updating and removing
-
-To update, replace the folder with the newer release and restart Grafana:
+Replace the folder with the newer release and restart:
 
 ```bash
 VERSION=1.2.0                      # the version you are moving to
@@ -143,7 +126,7 @@ sudo systemctl restart grafana-server
 
 Deleting the old folder rather than unzipping over it matters — it clears out files a newer release no longer ships. Your data sources and dashboards live in Grafana's own database, so they survive the upgrade untouched, and `grafana.ini` does not need changing again.
 
-To remove the plugin entirely:
+### Removing (package)
 
 ```bash
 sudo rm -rf /var/lib/grafana/plugins/nexalis-nexalis-datasource
@@ -151,6 +134,113 @@ sudo systemctl restart grafana-server
 ```
 
 Then drop the ID from `allow_loading_unsigned_plugins`.
+
+---
+
+## Track B: Grafana in Docker
+
+Nothing is installed *inside* the container. You unpack the plugin on the host and mount that one folder in, which means an upgrade is a host-side file swap plus a container restart.
+
+### B1. Unpack the plugin on the host
+
+Pick a directory you control — this example uses `./grafana-plugins` next to your `docker-compose.yml`:
+
+```bash
+VERSION=1.1.0                      # the version from Step 1, without the leading "v"
+
+mkdir -p ./grafana-plugins
+curl -sSL -o /tmp/nexalis-plugin.zip \
+  "https://github.com/Nexalis-Organization/nexalis-grafana-plugin-releases/releases/download/v$VERSION/nexalis-nexalis-datasource-$VERSION.zip"
+unzip -q /tmp/nexalis-plugin.zip -d ./grafana-plugins
+rm /tmp/nexalis-plugin.zip
+chmod -R a+rX ./grafana-plugins/nexalis-nexalis-datasource
+chmod +x ./grafana-plugins/nexalis-nexalis-datasource/gpx_*
+```
+
+<Warning>
+The official `grafana/grafana` image runs as **UID 472**, not root, and host file ownership is not translated into the container. If the plugin folder is not readable by that UID, Grafana skips it with no visible error. `chmod -R a+rX` is the simplest fix; `sudo chown -R 472:472` also works. The `chmod +x` matters too — a backend plugin whose binary is not executable fails to start.
+</Warning>
+
+### B2. Mount it and allow it
+
+```yaml
+services:
+  grafana:
+    image: grafana/grafana:12.3.0        # or newer; 12.3 is the minimum
+    ports:
+      - "3000:3000"
+    environment:
+      GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS: nexalis-nexalis-datasource
+    volumes:
+      - ./grafana-plugins/nexalis-nexalis-datasource:/var/lib/grafana/plugins/nexalis-nexalis-datasource
+      - grafana-data:/var/lib/grafana
+
+volumes:
+  grafana-data:
+```
+
+`GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS` is the environment-variable form of the `grafana.ini` setting — in Docker you never edit the file.
+
+Two details worth getting right:
+
+- **Mount the plugin's own folder, not the whole `plugins` directory.** Mounting the parent would hide any other plugin the image ships with.
+- **Give `/var/lib/grafana` a named volume.** Without it, your data sources and dashboards are inside the container's writable layer and disappear the moment you recreate it — which is exactly what an upgrade does.
+
+The equivalent as a one-off `docker run`, useful for a quick trial:
+
+```bash
+docker run --rm -p 3000:3000 -e GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=nexalis-nexalis-datasource -v "$PWD/grafana-plugins/nexalis-nexalis-datasource:/var/lib/grafana/plugins/nexalis-nexalis-datasource" grafana/grafana:12.3.0
+```
+
+### B3. Start it
+
+```bash
+docker compose up -d
+```
+
+Then jump to [Confirm Grafana found it](#confirm-grafana-found-it). If the data source is missing, the container log usually says why:
+
+```bash
+docker compose logs grafana | grep -i nexalis
+```
+
+### Updating (Docker)
+
+Replace the folder on the host, then restart the container. Grafana reads `plugin.json` only at startup, so the restart is what actually applies the new version:
+
+```bash
+VERSION=1.2.0                      # the version you are moving to
+
+curl -sSL -o /tmp/nexalis-plugin.zip \
+  "https://github.com/Nexalis-Organization/nexalis-grafana-plugin-releases/releases/download/v$VERSION/nexalis-nexalis-datasource-$VERSION.zip"
+rm -rf ./grafana-plugins/nexalis-nexalis-datasource
+unzip -q /tmp/nexalis-plugin.zip -d ./grafana-plugins
+rm /tmp/nexalis-plugin.zip
+chmod -R a+rX ./grafana-plugins/nexalis-nexalis-datasource
+chmod +x ./grafana-plugins/nexalis-nexalis-datasource/gpx_*
+docker compose restart grafana
+```
+
+The compose file does not change, and neither do your data sources and dashboards as long as `/var/lib/grafana` is on a named volume.
+
+### Removing (Docker)
+
+Delete the `volumes:` line for the plugin from your compose file, then:
+
+```bash
+docker compose up -d --force-recreate grafana
+rm -rf ./grafana-plugins/nexalis-nexalis-datasource
+```
+
+---
+
+## Confirm Grafana found it
+
+In Grafana, go to **Connections → Data sources → Add new data source** and search for `Nexalis`. If it appears, the plugin is loaded — continue to [Connecting to Nexalis Cloud](#connecting-to-nexalis-cloud).
+
+To check the version that is actually running, open **Administration → Plugins** and search for Nexalis.
+
+If it does not appear at all, see [The Nexalis data source does not appear](#the-nexalis-data-source-does-not-appear).
 
 ---
 
@@ -377,13 +467,25 @@ Nexalis is a time-series database: it is fast at reading **one tag over a long p
 
 ### The Nexalis data source does not appear
 
-Grafana logs a reason at startup — check it with `journalctl -u grafana-server | grep -i plugin` (or `docker logs <container>`), then work through:
+Grafana logs a reason at startup. Check it first — it usually names the problem outright:
 
-- **Was Grafana restarted** after the plugin was unzipped?
+```bash
+journalctl -u grafana-server | grep -i plugin     # package install
+docker compose logs grafana | grep -i plugin      # Docker
+```
+
+Then work through:
+
+- **Was Grafana restarted** after the plugin was unzipped? `plugin.json` is read only at startup.
 - **Is the folder in the right place**, and still named `nexalis-nexalis-datasource`? The `plugin.json` must be at `<plugins-dir>/nexalis-nexalis-datasource/plugin.json`, not one level deeper. Unzipping a second time can produce a nested duplicate folder.
-- **Is the plugin allowed?** A signature error in the log means `allow_loading_unsigned_plugins` is missing the ID, or is being overridden by an environment variable.
+- **Is the plugin allowed?** A signature error in the log means `allow_loading_unsigned_plugins` is missing the ID, or — in Docker — that `GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS` is missing or misspelled.
 - **Are the backend binaries executable?** A "failed to start plugin" error usually means the `gpx_*` files lost their executable bit. Run `chmod +x <plugins-dir>/nexalis-nexalis-datasource/gpx_*`.
-- **Can Grafana read the folder?** It must be readable by the user Grafana runs as, normally `grafana`.
+- **Can Grafana read the folder?** On a package install it must be readable by the `grafana` user. In Docker it must be readable by **UID 472**, which host ownership does not translate to — `chmod -R a+rX` on the host folder is the quick fix.
+- **In Docker, is the mount actually there?** Confirm what the container sees:
+  ```bash
+  docker compose exec grafana ls -l /var/lib/grafana/plugins/nexalis-nexalis-datasource
+  ```
+  An empty or missing directory means the `volumes:` path is wrong — it is resolved relative to the compose file, not to your shell.
 
 ### "Save & test" fails
 
