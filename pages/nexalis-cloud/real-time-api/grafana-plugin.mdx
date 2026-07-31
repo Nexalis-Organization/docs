@@ -6,6 +6,14 @@ The Nexalis Grafana plugin turns your Nexalis Cloud endpoint into a Grafana data
 
 It is a **backend** plugin: Grafana's own server calls the real-time API at `{endpoint}/api/v0/exec`. Your READ token is stored encrypted by Grafana and never reaches the browser.
 
+<img src="/images/nexalis-grafana-plugin/nexalis-grafana-plugin.png" alt="The Grafana panel editor showing a Nexalis query: a day of inverter AC power plotted in kW, with the query built from siteName, logicalNode, deviceID and dataObject filter rows, Auto bucket and Scaling switched on, and a series-name template driving the legend" style={{ maxWidth: "100%" }} />
+
+Everything in that panel came from the four filter rows at the bottom. Three things worth noticing, because none of them are panel settings you have to configure:
+
+- **The y-axis reads kW.** The unit comes from the `engUnits` attribute in the Nexalis data model, applied to the field automatically.
+- **The legend names itself** from the series-name template — site, asset type, measurement, device and sub-device, with any part a series does not have dropped.
+- **Auto bucket** resolved to the 1-minute step Grafana asked for, shown as `Interval = 1m` under Query options. Widen the time range and the bucket widens with it, so the amount of data crossing the wire stays roughly constant.
+
 <Note>
 The Grafana plugin is currently a **preview (beta)** release. Query options and the saved query format may still change between builds, so a dashboard built now may need small adjustments after an upgrade. Please send feedback and issues to [contact@nexalis.io](mailto:contact@nexalis.io).
 </Note>
@@ -310,7 +318,7 @@ This builds a chart of inverter AC power for one site, from an empty dashboard.
 6. Set the dashboard time range in the top right to **Last 6 hours**
 7. Click the refresh button
 
-You should now see one line per inverter, each named from its site, asset type, measurement and device, with the y-axis already in **kW** — the plugin reads `engUnits` from the Nexalis data model and applies it to the panel.
+You should now see one line per inverter, each named from its site, asset type, measurement and device, with the y-axis already in **kW** — the plugin reads `engUnits` from the Nexalis data model and applies it to the panel. The screenshot at the top of this page shows the same thing, narrowed further with `logicalNode` and `deviceID` filters as well.
 
 Click **Save** to keep the dashboard.
 
