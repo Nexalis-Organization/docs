@@ -80,7 +80,7 @@ Each entry describes one Modbus register to read.
 | `requestID`      | number | Identifier used to group registers into a single Modbus request          |
 | `type`           | string | Data type of the register (e.g. `s16`, `u32`, `float32`)                 |
 | `bytesOrder`     | string | Endianness / register order: `ABCD`, `BADC`, `DCBA`, `CDAB`               |
-| `cyclicPeriod`   | number | Interval for polling the register in milliseconds                        |
+| `cyclicPeriod`   | number | Interval for polling the register, **in seconds**                        |
 | `registerType`   | string | Modbus register class: `holdingregisters`, `inputregisters`, `coils`, or `discreteinputs` |
 
 #### Additional `commParams` for `modbus_rtu`
