@@ -63,6 +63,10 @@ Nexalis standardizes some tags by contextualizing and translating them to the **
 - `adder` - scaling offset for unit conversion (from scada unit to Nexalis `engUnits`)
 - `measurementType` - Analog or Discrete
 
+Values are **stored raw**, exactly as sent by the data source. `multiplier` and
+`adder` are what convert them into `engUnits`, and that conversion is not applied
+automatically - see [FETCH](#fetch---retrieve-time-series-data) below.
+
 <Note>
 **Field Availability**: Nexalis API only returns non-empty labels and attributes. While labels are always present for identification, standardized attributes (such as `assetType`, `logicalNode`, `dataObject`) are only included for tags that have been mapped to the Nexalis data model. Additionally, unit-related attributes (`engUnits`, `adder`, `multiplier`) are typically omitted for discrete measurement types, as these data points generally do not have a unit.
 </Note>
@@ -128,6 +132,27 @@ Output:
 ```
 
 Here, each sub-list in the "v" (value) field is a measurement, where the first element is the microseconds unix timestamp, and the last element is the actual value.
+
+<Warning>
+**`FETCH` returns raw, unscaled values.** Values are stored exactly as the data source sent them. The `multiplier` and `adder` attributes convert them into the units named in `engUnits`, and `FETCH` does **not** apply that conversion. In the output above the dataPoint carries `"multiplier":"0.1"` and `"engUnits":"kW"`, so the raw value `348` is **34.8 kW**, not 348 kW. Reading a `FETCH` result as though it were already in `engUnits` overstates it by the multiplier.
+</Warning>
+
+Apply the conversion with [`@nexalis/scale`](./nexalis-macros):
+
+```warpscript
+{
+  'token' 'YOUR_READ_TOKEN'
+  'class' 'nx.value'
+  'labels' { 'assetType' 'INV' 'dataObject' 'TotW' }
+  'start' '2026-01-15T00:00:00Z'
+  'end' '2026-01-15T01:00:00Z'
+} FETCH
+@nexalis/scale
+```
+
+<Note>
+The `@nexalis/fetch_trapezoidal_averages` and `@nexalis/fetch_bucketized` macros already scale their output - they call `@nexalis/scale` internally unless you pass `'scaling' false`. A plain `FETCH` is the only query path that returns unscaled values, so mixing raw `FETCH` results with macro results in the same report gives readings that differ by the multiplier. And because `@nexalis/scale` is not idempotent, never apply it on top of a macro result.
+</Note>
 
 [How to do it in python](./python-examples) 
 
