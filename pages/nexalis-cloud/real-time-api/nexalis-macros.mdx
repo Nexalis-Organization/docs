@@ -95,7 +95,7 @@ Unlike simple arithmetic means, trapezoidal averaging accounts for the time dura
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `read_token` | STRING | Yes | Nexalis API read token with fetch permissions |
+| `token` | STRING | Yes | Nexalis API token with READ access privileges |
 | `start` | STRING or LONG | Yes | Start timestamp (ISO8601 string or microseconds) |
 | `end` | STRING or LONG | Yes | End timestamp (ISO8601 string or microseconds) |
 | `bucket_size` | LONG | Yes | Bucket width in minutes |
@@ -162,7 +162,7 @@ Use this macro when you want to:
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `token` | STRING | Yes | Nexalis API read token with fetch permissions |
+| `token` | STRING | Yes | Nexalis API token with READ access privileges |
 | `start` | STRING or LONG | Yes | Start timestamp (ISO8601 string or microseconds) |
 | `end` | STRING or LONG | Yes | End timestamp (ISO8601 string or microseconds) |
 | `bucket_size` | LONG | Yes | Bucket width in minutes |
