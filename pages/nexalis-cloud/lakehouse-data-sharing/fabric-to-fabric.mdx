@@ -4,63 +4,156 @@
 
 ---
 
-## OneLake Shortcuts
+## OneLake shortcuts
 
 OneLake shortcuts allow you to access data stored in Nexalis' Fabric lakehouse directly within your own Fabric workspace without copying or moving the data. This provides:
 
 - **Zero data duplication** — Access shared data in-place
-- **Real-time access** — Always see the latest data from Nexalis
+- **No ingestion pipeline** — You always read the current state of the shared table, with no copy step on your side
 - **No egress costs** — Nexalis stores data in your desired Azure region
 - **Native Fabric integration** — Works with all Fabric compute engines (Spark, SQL, Power BI, etc.)
 
 ---
 
-## How It Works
+## How it works
 
-Nexalis uses Microsoft Fabric's **External Data Share** feature to create OneLake shortcuts in your workspace. These shortcuts point directly to Delta tables in Nexalis' lakehouse, providing real-time access with no recipient-side data copy or duplicate storage.
+Nexalis uses Microsoft Fabric's **External Data Share** feature to create OneLake shortcuts in your workspace. These shortcuts point directly to Delta tables in Nexalis' lakehouse, so you read the data in place — no recipient-side copy, no duplicate storage.
 
-## Required Information
+---
 
-To configure Fabric-to-Fabric sharing, Nexalis needs an **email address** in your Microsoft organization and your **Azure Tenant ID**.
+## Required information
 
-**How to find it:**
-- In Fabric: Click on your profile icon in the top right corner → click the small info circle next to your tenant name → copy your tenant ID.
-- In Azure Portal: Navigate to Microsoft Entra ID → copy your tenant ID.
+Nexalis needs one thing: the **email address of a named Fabric user** in your organization, who will accept the share.
 
-### 2. Enable Data Sharing in Fabric
+That person must:
+
+- Have a **Microsoft Entra ID account in your Fabric tenant**. A personal address (Gmail, Outlook.com, etc.) cannot be used — there is no Fabric tenant behind it to accept the share into.
+- Have **write permissions on a lakehouse** in your tenant. This is where the shortcut to the Nexalis data will be created, and a lakehouse is the only valid destination.
+- Be **within the scope** of your **"Users can accept external data shares"** tenant setting (see the next section).
+
+A distribution list, a shared mailbox, or a generic contact address will not work — the invitation must be accepted by a real Fabric user.
+
+The accepting user does **not** need any administrator role. Administrator rights are only needed once, to enable the tenant setting.
+
+ℹ️ Your Azure Tenant ID is not required. Fabric determines your tenant from the recipient's email address when the share is accepted.
+
+---
+
+## Enable external data sharing in Fabric
 
 Your Fabric organization must have the **"Users can accept external data shares"** setting enabled.
 
-**How to enable:**
-1. Go to **Fabric Admin Portal** (gear icon → Admin portal)
-2. Navigate to **Tenant settings**
-3. Under **External data sharing**, find **"Users can accept external data shares"**
-4. Toggle the setting to **Enabled**
-5. Click **Apply**
+⚠️ **This requires both a Fabric admin role and a Fabric license, on the same account.**
 
-⚠️ **Note:** This setting must be enabled by a Fabric administrator before you can receive data shares from Nexalis.
+**How to enable it:**
+
+1. Select the **settings (gear) icon** at the top of the Fabric portal.
+2. In the side pane, select **Admin portal** under **Governance and insights**.
+3. Select **Tenant settings**.
+4. Under **Export and sharing settings**, find **"Users can accept external data shares"**.
+5. Toggle the setting to **Enabled**.
+6. Under **Apply to**, choose who is allowed to accept external data shares:
+   - **The entire organization** — anyone in your tenant.
+   - **Specific security groups** — only the groups you list. If you choose this, make sure the person who will accept the Nexalis share belongs to one of them.
+
+   You can also tick **Except specific security groups** to exclude groups from the scope you selected.
+7. Click **Apply**.
+
+A tenant setting change can take up to 15 minutes to take effect across the organization.
+
+**If you don't see Tenant settings at step 3**, the Admin portal opens but shows only **Capacity settings** and **Help + support**. Check both halves:
+
+- **Role** — the account needs the **Fabric administrator** (or Power Platform administrator, or Global administrator) role, assigned in the Microsoft 365 admin center. Sign out and back in after the role is granted.
+- **License** — the account also needs a per-user Fabric or Power BI license. A **Free** license is sufficient. Dedicated admin accounts frequently have no license assigned, which alone is enough to hide **Tenant settings**.
+
+See Microsoft's [Enable external data sharing in a Fabric tenant](https://learn.microsoft.com/en-us/fabric/governance/external-data-sharing-enable) for reference.
 
 ---
 
-## Setup Process
+## Setup process
 
-1. **Collect the required information** listed above
-2. **Share credentials securely** with your Nexalis account manager or support contact
-3. **Nexalis configures** the OneLake shortcuts in your specified lakehouse
-4. **Verify access** to shared tables in your Fabric workspace
+1. **Identify the Fabric user** who will accept the share, and check they meet the conditions in [Required information](#required-information).
+2. **Enable external data sharing** in your Fabric tenant settings.
+3. **Send that person's email address** to your Nexalis account manager or support contact.
+4. **Nexalis creates the external data share** and sends an invitation to that address.
+5. **Accept the invitation** and choose the lakehouse where the shortcut will be created.
+6. **Verify access** to the shared tables in your Fabric workspace.
 
-⚠️ **Recommendation:** To minimize latency and avoid egress costs, use a Fabric workspace in the **same Azure region** as the Nexalis environment.
+⚠️ **Recommendation:** Tell the Nexalis team which Azure region your Fabric workspace is in, so the Nexalis environment can be provisioned in that **same region**. Matching regions minimizes latency and avoids egress costs. Raise this early — moving an environment after setup is far more work than placing it correctly the first time.
 
 ---
 
-## After Setup
+## What happens on the Nexalis side
 
-Once configured, you will see shortcuts to Nexalis shared tables directly in your Fabric lakehouse under the `Files` directory:
+The tables you receive are produced by a pipeline running entirely in **Nexalis' own Microsoft Fabric tenant**. Nexalis does not run anything in your workspace, and the share is one-directional: Nexalis grants you read access to its tables and receives no access to your environment.
+
+### How the shared tables are built
+
+1. **Extraction** — On a schedule, the Nexalis orchestrator fetches the newest data from the platform's time-series database. The fetch is incremental: a checkpoint records where the previous batch stopped, and each run resumes from there.
+2. **Staging** — The batch is written as Delta files into an internal staging area of the Nexalis lakehouse. This area is never shared.
+3. **Standardization** — A Fabric notebook joins the raw data against your standardization table, applies the configured scaling (`multiplier`, `adder`) and engineering units, and produces an intermediate *silver* table. The silver table is an internal processing step and is **never shared**.
+4. **Publication** — The silver table is merged into the *gold* table. The gold table is the only object shared with you.
+
+**Analog data** is aggregated into fixed time buckets using a trapezoidal average before publication — typically 15 minutes, configurable per client (this is the `X` in `nexalis_<org_name>_analog_Xminavg`).
+
+**Discrete data** is published without aggregation.
+
+### Refresh frequency
+
+The pipeline runs **every 4 hours by default**, configurable per client. Because the shortcut reads the Nexalis table in place, each batch becomes visible to you as soon as it is merged — there is no separate delivery step and nothing to trigger on your side.
+
+After an extended interruption, the pipeline deliberately catches up incrementally rather than in one large batch, so a long backlog may take several runs to clear.
+
+### Creating the share
+
+External data sharing must be enabled on **both** tenants, under different setting names: **External data sharing** in the providing tenant (Nexalis), and **Users can accept external data shares** in the consuming tenant (yours). Nexalis handles its own side.
+
+1. Nexalis creates an External Data Share on your gold tables — and only those tables — in its lakehouse.
+2. Fabric sends an invitation to the email address you provided.
+3. A user in your organization opens the invitation and accepts the share, choosing the **lakehouse** in which the shortcut will be created. A lakehouse is the only valid destination.
+4. The shortcut appears in that lakehouse and stays in sync with the Nexalis table.
+
+⚠️ **Note:** Step 3 requires an action on your side. Until someone in your organization accepts the invitation, no tables appear in your workspace. The invitation expires after **90 days**.
+
+### The Nexalis procedure, step by step
+
+For full transparency, this is exactly what the Nexalis team does in its own tenant to grant you access. Nothing here happens in your workspace.
+
+**Before starting**, the Nexalis operator needs the **External data sharing** tenant setting enabled in the Nexalis tenant with their account in its scope, and **Read** and **Reshare** permissions on the client lakehouse.
+
+1. In Fabric, open **Workspaces** → the client's workspace (`<client>-workspace`).
+2. In the item list, locate the **Lakehouse** item `<client>_lakehouse`. Fabric also lists a SQL analytics endpoint and a semantic model under the same name — the external share action exists only on the Lakehouse item.
+3. Hover over that row, open the **… (More options)** menu, and select **External data share**.
+
+   The green **Share** button inside the lakehouse editor is a different feature — it shares within the Nexalis tenant and cannot be used here.
+4. In the **New external data share** dialog, expand **Tables** → the `<client>` schema, and tick **only** the two gold tables:
+   - `nexalis_<client>_analog_Xminavg`
+   - `nexalis_<client>_discrete`
+5. Select **Save and continue**.
+6. In **Create and send link**, enter the client contact's email address and select **Send**. Alternatively, use **Copy link** and send it through an agreed channel.
+
+   There is no tenant ID field — Fabric resolves the client's tenant from the email address.
+7. To follow the share afterwards, reopen the lakehouse's **… menu** → **Manage permissions** → **External data shares** tab. Each share shows a status: **Pending** (invitation sent), **Active** (accepted), **Expired** (not accepted within 90 days), or **Revoked**.
+
+⚠️ **The invitation link cannot be tested from inside the Nexalis tenant.** External data share links only resolve for users in another tenant, so the first genuine test of a new share is the client accepting it.
+
+⚠️ **Revoking a share is irreversible.** Revoking severs all access from the client tenant immediately and permanently, and everything the client built on the shared tables stops working. A revoked share cannot be restored — a new share can be created, but the client's downstream work must be rebuilt. Only revoke in consultation with the client.
+
+---
+
+## After setup
+
+{/* TODO: verify against the first real share. "Files directory" and the trailing slashes below
+    suggest folders, but the shared objects are Delta tables, which would normally appear under
+    Tables. Correct this once observed in the recipient workspace. */}
+
+After Nexalis completes the configuration, you will see shortcuts to the Nexalis shared tables directly in your Fabric lakehouse under the `Files` directory:
 
 - `nexalis_<org_name>_analog_Xminavg/` — Aggregated time-series data
 - `nexalis_<org_name>_discrete/` — High-frequency time-series data in standardized format
 
 These shortcuts behave like native Delta tables and can be queried using:
+
 - **SQL endpoints** in Fabric
 - **Power BI** for visualization
 - **Spark notebooks** for data processing
@@ -68,42 +161,48 @@ These shortcuts behave like native Delta tables and can be queried using:
 
 ---
 
-## Example: Querying Shared Data
+## Example: querying shared data
 
 ```sql
--- Query aggregated data in SQL endpoint
-SELECT 
+-- Query aggregated data in the SQL analytics endpoint (T-SQL)
+SELECT TOP (100)
     siteName,
     deviceID,
     dataPoint,
-    timestamp,
-    avg_value
-FROM nexalis_clientname_analog_xminavg
+    dtConnector,
+    value
+FROM nexalis_clientname_analog_15minavg
 WHERE siteName = 'site_A'
-    AND timestamp >= '2025-01-01'
-ORDER BY timestamp DESC
+    AND dtConnector >= '2025-01-01'
+ORDER BY dtConnector DESC;
+```
+
+In a **Spark notebook**, the same query uses Spark SQL, where `LIMIT` replaces `TOP`:
+
+```sql
+SELECT
+    siteName,
+    deviceID,
+    dataPoint,
+    dtConnector,
+    value
+FROM nexalis_clientname_analog_15minavg
+WHERE siteName = 'site_A'
+    AND dtConnector >= '2025-01-01'
+ORDER BY dtConnector DESC
 LIMIT 100;
 ```
+
+See [Table Schema](/pages/nexalis-cloud/lakehouse-data-sharing/data-structure/table-schema) for the full column list.
 
 ---
 
 ## Security
 
 - **Access control** is managed through Azure RBAC and Fabric workspace permissions
-- **Service principal** should follow least-privilege principles
-- **Credentials** are stored securely by Nexalis and rotated periodically
+- **The share is read-only and one-directional** — Nexalis grants read access to its own tables and receives no access to your tenant
+- **Credentials** are stored securely by Nexalis and rotated periodically. The service principal used by the pipeline is Nexalis-owned and scoped to the Nexalis tenant, following least-privilege principles
 - **Audit logs** track all data access through Fabric's built-in monitoring
-
----
-
----
-
-## After setup
-
-After Nexalis completes the configuration, you will see the shared tables directly in your Fabric workspace:
-
-- `nexalis_<org_name>_analog_Xminavg`
-- `nexalis_<org_name>_discrete`
 
 ---
 
@@ -111,7 +210,6 @@ After Nexalis completes the configuration, you will see the shared tables direct
 
 - [Microsoft Fabric OneLake shortcuts documentation](https://learn.microsoft.com/en-us/fabric/onelake/onelake-shortcuts)
 - [Microsoft Fabric External Data Shares](https://learn.microsoft.com/en-us/rest/api/fabric/core/external-data-shares)
-- [Azure Service Principal setup](https://learn.microsoft.com/en-us/entra/identity-platform/howto-create-service-principal-portal)
 
 ---
 
