@@ -54,6 +54,8 @@ Start Power BI Desktop, then **Home → Get Data → More…**, type `nexalis`, 
 
 Run **Install Nexalis Power BI connector.bat** from the newer zip, then restart Power BI Desktop. Reports keep working, but if an upgrade changes how the tree is organised, a saved query that navigates to a specific folder may need re-pointing — open **Transform data** and re-select from the Navigator.
 
+Upgrades do **not** ask for administrator rights. That prompt exists only to trust our signature, and once it has been approved on a machine there is nothing further to change, so seeing no prompt on an update is correct.
+
 To remove it, run **Uninstall Nexalis Power BI connector.bat**.
 
 ---
@@ -114,30 +116,69 @@ The Navigator shows your sites. Inside each one, the connector offers only the g
 
 ```
 Site
+ ├── By asset model     what the equipment is: inverters, meters, met stations
  ├── By tag path        splits the data point name into a hierarchy
- ├── By asset type      inverters, meters, weather stations, …
+ ├── By asset type      one flat list per asset type
  └── By device
 ```
 
-**By tag path** is offered first wherever your data point names have a usable structure, which is most sites. A name like
+### By asset model
+
+The same hierarchy as the **Catalog Tree** in the Nexalis customer portal, and the place to start if your tags are mapped to the Nexalis data model:
+
+```
+By asset model
+ ├── Site Level (SITE)
+ ├── PV Inverter (INV)
+ │    ├── All PV Inverter (aggregated)
+ │    ├── Three Phase Measurements (MMXU)
+ │    │    ├── All Three Phase Measurements (aggregated)
+ │    │    ├── Active Power (P) (TotW)
+ │    │    └── Voltage (PPV)
+ │    └── DC Electrical Measurements (MMDC)
+ ├── Meteorological Station (MeteoSta)
+ └── Tags without standardization
+```
+
+Asset type, then logical node, then data object, then the individual points. Each level shows the description from the Nexalis data model with its code in brackets — the code is kept visible because it is what appears in the tag itself, in the portal, and in any support conversation.
+
+Tags that were never mapped to the data model are collected under **Tags without standardization**, which opens straight onto its data points.
+
+<Note>
+This axis is offered wherever *any* tag at the site carries an asset type, with no minimum. On a site where only part of the data is mapped, that part is still usually the part people work with — and **By tag path** remains available for everything else.
+</Note>
+
+### By tag path
+
+Offered wherever your data point names have a usable structure, which is most sites. A name like
 
 ```
 ns=2;s=[default]/TRACKERS/TRK_31/NCU_2/SPC_032/SETPOINT
 ```
 
-becomes `TRACKERS → TRK_31 → NCU_2 → …`, up to four levels deep, with any remaining segments shown in the leaf name.
+becomes `TRACKERS → TRK_31 → NCU_2 → …`, up to four levels deep, with any remaining segments shown in the leaf name. It is the only grouping that reaches every tag at a site, mapped or not.
 
-**By asset type** appears when tags at that site have been mapped to the Nexalis data model. **By device** appears only when the site has more than one `deviceID` — on sites where every tag arrives through a single SCADA gateway, that grouping would be one folder containing everything, so it is hidden.
+### By asset type, By device
+
+**By asset type** is the first level of **By asset model** with a flat list of points underneath, and is kept so that reports built before the asset model existed keep working. For new reports, use **By asset model**.
+
+**By device** appears only when the site has more than one `deviceID` — on sites where every tag arrives through a single SCADA gateway, that grouping would be one folder containing everything, so it is hidden.
 
 <Note>
-Seeing fewer grouping options on one site than another is expected. The connector hides an axis that cannot subdivide anything, rather than offering a folder that just contains the whole site. On some sites **By tag path** is the only option.
+Seeing fewer grouping options on one site than another is expected. The connector hides an axis that cannot subdivide anything, rather than offering a folder that just contains the whole site.
 </Note>
 
-### Loading a whole branch
+### Loading a whole branch, and mixing several
 
-Every folder contains an **All &lt;name&gt; (aggregated)** entry alongside its individual data points. That entry loads every series in the branch at once, aligned on the same timestamps — usually what you want for a chart, because the series can then be compared and combined directly.
+Every folder contains an **All &lt;name&gt; (aggregated)** entry alongside its contents. That entry loads every series beneath it at once, aligned on the same timestamps — usually what you want for a chart, because the series can then be compared and combined directly.
 
-Tick as many entries as you like and press **Load**.
+Under **By asset model** that entry appears at *every* level, so you can load all of one inverter's three-phase measurements, or everything on every inverter, without clicking down to individual points.
+
+**Tick entries from different branches in the same pass.** A report covering meter, inverter, battery and meteorological data is built by selecting a branch from each — every selection returns the same columns on the same time grid, so they append into one table and compare directly.
+
+<Note>
+Each ticked entry becomes its own query with its own copy of the time-range settings. If you expect to select from several branches, set up the shared parameters described in [Changing the window across many queries](#changing-the-window-across-many-queries) first — otherwise changing the window later means editing each query separately.
+</Note>
 
 ---
 
@@ -217,7 +258,9 @@ If the interval is finer than a tag's logging rate, the extra buckets are interp
 
 **Fewer series load than the folder listed.** Most data points are dormant in any given window — event tags that did not fire. A folder listing a thousand tags may return a couple of hundred series. Nothing is being dropped: every series with data in the window is returned, including booleans and integers.
 
-**`(unclassified)` folders.** Data points that were never mapped to the Nexalis data model, so they have no `assetType`. They are shown rather than hidden so that nothing disappears from the tree. Where the site also offers **By tag path**, browsing there is usually easier — it covers every tag.
+**`Tags without standardization`, or `(unclassified)` folders.** Data points that were never mapped to the Nexalis data model, so they carry no asset type. They are shown rather than hidden so that nothing disappears from the tree, and on most sites they are the majority of the tags — plants generally collect far more than anyone reads. Where the site also offers **By tag path**, browsing there is usually easier, since it covers every tag.
+
+**Blank values in a row that otherwise looks fine.** A blank is not a gap in the data — it means Nexalis was collecting normally but the source itself reported nothing, typically a sensor or controller that was offline. That is deliberately different from a series returning *no rows at all*, which means nothing was recorded in that window. A source that stays offline can produce a series that is blank throughout.
 
 **A message saying the selection is too large.** A deliberate guard, so that an oversized selection fails immediately rather than leaving Power BI busy for several minutes. The message says which limit was reached and what to change — usually a smaller folder, a shorter time range, or a wider interval.
 
