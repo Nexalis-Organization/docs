@@ -28,9 +28,13 @@ The Power BI connector is currently a **preview (beta)** release. Navigation and
 
 ### Step 1: Get the installer
 
-While the connector is in preview it is not published for self-service download. Contact [contact@nexalis.io](mailto:contact@nexalis.io) for `Nexalis-PowerBI-Connector.zip`.
+Download **`Nexalis-PowerBI-Connector.zip`** from the [connector releases page](https://github.com/Nexalis-Organization/nexalis-powerbi-connector-releases/releases).
 
 Unzip it, keeping all the files together in one folder.
+
+<Note>
+The connector is in preview, so releases there are marked *Pre-release*. Take the newest one.
+</Note>
 
 ### Step 2: Close Power BI Desktop
 
@@ -67,6 +71,24 @@ Selecting **Nexalis (Beta)** opens a settings dialog:
 | **Aggregation** | How values are summarised per bucket. Default `average (time-weighted)` |
 
 Then paste your read token. Windows stores it in the credential manager, so you do this once per endpoint — the token is not saved inside the `.pbix` file.
+
+### Replacing an expired token
+
+Read tokens expire. Because Power BI remembers the token per endpoint and keeps reusing it, a new token has to be handed to Power BI rather than simply obtained from us.
+
+When the connector reports a rejected token, the error offers **Edit credentials** — click it and paste the new one. That is the whole fix.
+
+If nothing is currently failing, or the banner has gone:
+
+1. **File → Options and settings → Data source settings**
+2. Select your Nexalis endpoint, e.g. `https://yourcompany.app.nexalis.io`
+3. **Edit Permissions… → Credentials: Edit**, paste the new token, **Save**
+
+<Note>
+If your endpoint is not listed, switch the selector at the top of that dialog from **Data sources in current file** to **Global permissions**. The token is stored per machine, not per report, so a report you have just opened may not list it.
+</Note>
+
+**Clear Permissions** is the alternative: it forgets the token entirely, and Power BI asks for a new one next time the connector is used. Refreshing a report is enough to trigger the prompt.
 
 ### Rolling versus fixed windows
 
@@ -211,6 +233,9 @@ Power BI was running during the installation, or is still running in the backgro
 
 **`Container unexpectedly exited. Exit code: 0xC000026F`**
 A Windows issue on Arm laptops affecting Power Query's engine, not the connector or your data. Install the latest Windows updates and try again.
+
+**"Nexalis rejected the token… Token Expired"**
+Your read token has expired, which is expected eventually rather than a sign that anything is broken. See [Replacing an expired token](#replacing-an-expired-token).
 
 **A query that used to work now fails after an upgrade**
 The folder it navigated to may have been renamed or reorganised. Open **Transform data** and re-select the series from the Navigator.
