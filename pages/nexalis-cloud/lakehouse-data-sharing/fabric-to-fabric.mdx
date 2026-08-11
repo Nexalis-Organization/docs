@@ -110,7 +110,7 @@ External data sharing must be enabled on **both** tenants, under different setti
 
 1. Nexalis creates an External Data Share on your gold tables — and only those tables — in its lakehouse.
 2. Fabric sends an invitation to the email address you provided.
-3. A user in your organization opens the invitation and accepts the share, choosing the **lakehouse** in which the shortcut will be created. A lakehouse is the only valid destination.
+3. A user in your organization opens the invitation and accepts the share, choosing the **lakehouse** in which the shortcut will be created (a lakehouse is the only valid destination), and whether it lands under **Tables** or **Files** — choose **Tables**, see [After setup](#after-setup).
 4. The shortcut appears in that lakehouse and stays in sync with the Nexalis table.
 
 ⚠️ **Note:** Step 3 requires an action on your side. Until someone in your organization accepts the invitation, no tables appear in your workspace. The invitation expires after **90 days**.
@@ -143,14 +143,14 @@ For full transparency, this is exactly what the Nexalis team does in its own ten
 
 ## After setup
 
-{/* TODO: verify against the first real share. "Files directory" and the trailing slashes below
-    suggest folders, but the shared objects are Delta tables, which would normally appear under
-    Tables. Correct this once observed in the recipient workspace. */}
+When you accept the invitation, Fabric asks where to create the incoming shortcuts in the lakehouse you selected — under **Tables** or under **Files**.
 
-After Nexalis completes the configuration, you will see shortcuts to the Nexalis shared tables directly in your Fabric lakehouse under the `Files` directory:
+⚠️ **Choose Tables.** A shortcut created under **Tables** is registered as a Delta table, so it can be queried directly from the SQL analytics endpoint and used in semantic models, Power BI reports, and notebooks. A shortcut created under **Files** is only a folder: it does not appear as a table in the SQL analytics endpoint, and you would have to read it by path in Spark. The rest of this page assumes you chose **Tables**.
 
-- `nexalis_<org_name>_analog_Xminavg/` — Aggregated time-series data
-- `nexalis_<org_name>_discrete/` — High-frequency time-series data in standardized format
+Once the share is accepted, the two shared tables appear in your lakehouse:
+
+- `nexalis_<org_name>_analog_Xminavg` — Aggregated time-series data
+- `nexalis_<org_name>_discrete` — High-frequency time-series data in standardized format
 
 These shortcuts behave like native Delta tables and can be queried using:
 
