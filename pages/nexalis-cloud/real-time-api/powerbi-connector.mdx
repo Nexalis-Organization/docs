@@ -176,6 +176,22 @@ Under **By asset model** that entry appears at *every* level, so you can load al
 
 **Tick entries from different branches in the same pass.** A report covering meter, inverter, battery and meteorological data is built by selecting a branch from each — every selection returns the same columns on the same time grid, so they append into one table and compare directly.
 
+### How long a big branch takes
+
+Large branches are supported — a full inverter report across ten thousand series is a normal thing to want — but they are not instant. Any branch big enough to notice says so in its own name before you select it:
+
+```
+All PV Inverter (INV) (aggregated) - 11408 series, expect minutes
+```
+
+As a rough guide: **thousands of series take seconds, tens of thousands take minutes.** The upper limit is 20,000 series in one selection.
+
+<Note>
+Widening the interval does **not** speed this up. Every matching series is read across the whole window whatever the interval, so the interval changes how many rows come back, not how much work the server does. To make a large selection faster, shorten the time range or pick a smaller branch.
+</Note>
+
+Raw mode is capped far lower, at 100 series, because raw data is unbounded — a single series can be tens of thousands of points a day.
+
 <Note>
 Each ticked entry becomes its own query with its own copy of the time-range settings. If you expect to select from several branches, set up the shared parameters described in [Changing the window across many queries](#changing-the-window-across-many-queries) first — otherwise changing the window later means editing each query separately.
 </Note>
@@ -288,7 +304,9 @@ If the interval is finer than a tag's logging rate, the extra buckets are interp
 
 **The `[12]` numbers beside some folders, but not others.** Power BI puts that badge there itself, by counting what is directly inside a folder once it has evaluated it — the connector never supplies it. Three things follow. It counts only **one level down**, so a folder showing `[10]` may contain thousands of tags further in. On a folder of data points it is one *more* than the number of points, because it includes the **All … (aggregated)** entry. And it counts **catalogued tags, not series that will load** — most tags are dormant in any given window, so a folder marked `[1,099]` might return a couple of hundred series. Folders with no badge simply have not been evaluated yet; the larger ones take longer, and the number appears once you open them.
 
-**A message saying the selection is too large.** A deliberate guard, so that an oversized selection fails immediately rather than leaving Power BI busy for several minutes. The message says which limit was reached and what to change — usually a smaller folder, a shorter time range, or a wider interval.
+**A message saying the selection is too large.** A deliberate guard, so that an oversized selection fails immediately rather than leaving Power BI busy indefinitely. The message says which limit was reached and what to change — usually a smaller folder, a shorter time range, or a wider interval.
+
+**"expect minutes" in a folder's name.** Not a warning that something is wrong — a heads-up that a branch is big enough to take a while, shown before you commit to it. See below.
 
 ---
 
