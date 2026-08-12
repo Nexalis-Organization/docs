@@ -198,7 +198,8 @@ Each query returns a long, tall table:
 | `Measurement Type` | `Analog` or `Discrete` |
 | `Series` | `dataPoint` |
 | `Units` | `engUnits`, where the tag is standardised |
-| `Timestamp` | UTC, to the second |
+| `Timestamp` | UTC, full precision — use this for axes and measures |
+| `Timestamp (UTC)` | the same instant as readable text — use this in tables |
 | `Value` | scaled |
 
 The data-model columns carry the same labels as the folders you browsed, so a slicer reads the same way the tree did. They are blank for tags that were never standardised. All of them are low-cardinality repeated text, which Power BI compresses heavily, so they cost very little in the model.
@@ -209,18 +210,20 @@ The shape is deliberate. A column-per-series layout would change shape whenever 
 **Timestamps are UTC.** They are not converted to local time, because on a scheduled refresh "local" would mean the refreshing machine's timezone rather than yours. Convert in your report if you need local time.
 </Note>
 
-### Turn off Auto date/time
+### Two timestamp columns, and why
 
-Power BI creates a hidden **date hierarchy** for every date column and uses it by default, which for this data is actively unhelpful: the hierarchy stops at **Day**, so every reading in a day collapses onto one point and a table shows many rows that look identical apart from the value.
+Power BI builds a hidden **date hierarchy** for every date column and uses it by default. That hierarchy stops at **Day** — so with the default 15-minute interval, every reading in a day collapses onto one label and a table shows rows that appear identical apart from the value. There is no way for a connector to opt out of it.
 
-The connector returns the full timestamp, down to the second. To see it:
+So the connector returns the same instant twice:
 
-- **For one visual:** in the field well, click the arrow beside `Timestamp` and pick **Timestamp** instead of **Date Hierarchy**.
-- **Everywhere, and recommended:** **File → Options and settings → Options → Data Load**, and clear **Auto date/time**. Do it under both *Global* and *Current File* — Global applies to new reports, Current File to the one you have open.
+- **`Timestamp`** — a real date/time at full precision. Use it for chart axes, measures, relationships and anything time-intelligent. Power BI may show it as a hierarchy; to see the actual value, click the arrow beside the field in the field well and pick **Timestamp** rather than **Date Hierarchy**.
+- **`Timestamp (UTC)`** — the same instant as text, `2026-08-12 14:45:00`. Text cannot acquire a date hierarchy, so this always shows in full with no setup. It sorts correctly, and in raw mode it widens to milliseconds so that closely spaced readings stay distinguishable. Use it in tables and matrices.
 
 <Note>
-This is worth doing regardless of the display problem. Each hidden date table is built per date column and can add noticeably to the size of a report — for time-series data at second resolution, it is cost with no benefit.
+It costs far less than it looks. Every series in a load shares the same time grid, so the number of distinct text values is the number of *intervals*, not the number of rows — Power BI stores each label once for the whole table.
 </Note>
+
+**Turning off Auto date/time is still worth it.** **File → Options and settings → Options → Data Load**, clear **Auto date/time** under both *Global* and *Current File*. Each hidden date table is built per date column and adds real size to a report; for time-series data at this resolution it is cost with no benefit.
 
 ---
 
