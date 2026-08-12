@@ -262,6 +262,8 @@ If the interval is finer than a tag's logging rate, the extra buckets are interp
 
 **Blank values in a row that otherwise looks fine.** A blank is not a gap in the data — it means Nexalis was collecting normally but the source itself reported nothing, typically a sensor or controller that was offline. That is deliberately different from a series returning *no rows at all*, which means nothing was recorded in that window. A source that stays offline can produce a series that is blank throughout.
 
+**The `[12]` numbers beside some folders, but not others.** Power BI puts that badge there itself, by counting what is directly inside a folder once it has evaluated it — the connector never supplies it. Three things follow. It counts only **one level down**, so a folder showing `[10]` may contain thousands of tags further in. On a folder of data points it is one *more* than the number of points, because it includes the **All … (aggregated)** entry. And it counts **catalogued tags, not series that will load** — most tags are dormant in any given window, so a folder marked `[1,099]` might return a couple of hundred series. Folders with no badge simply have not been evaluated yet; the larger ones take longer, and the number appears once you open them.
+
 **A message saying the selection is too large.** A deliberate guard, so that an oversized selection fails immediately rather than leaving Power BI busy for several minutes. The message says which limit was reached and what to change — usually a smaller folder, a shorter time range, or a wider interval.
 
 ---
