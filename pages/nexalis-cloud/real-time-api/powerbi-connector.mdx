@@ -189,16 +189,37 @@ Each query returns a long, tall table:
 | Column | |
 |---|---|
 | `Site` | `siteName` |
-| `Device` | `deviceID` |
+| `Device` | `deviceID` — usually the SCADA gateway |
+| `Sub Device` | `subDeviceID` — the individual piece of equipment |
+| `Asset Type` | e.g. `PV Inverter (INV)` |
+| `Logical Node` | e.g. `Three Phase Measurements (MMXU)` |
+| `Data Object` | e.g. `Active Power (P) (TotW)` |
+| `Sub Data Object` | where the tag has one |
+| `Measurement Type` | `Analog` or `Discrete` |
 | `Series` | `dataPoint` |
 | `Units` | `engUnits`, where the tag is standardised |
-| `Timestamp` | UTC |
+| `Timestamp` | UTC, to the second |
 | `Value` | scaled |
 
-The shape is deliberate. A column-per-series layout would change shape whenever a series is added or removed, breaking every visual that referenced a column by name. With one row per reading you can add or remove series freely, put `Series` on a legend or slicer, and write a single measure that works for all of them.
+The data-model columns carry the same labels as the folders you browsed, so a slicer reads the same way the tree did. They are blank for tags that were never standardised. All of them are low-cardinality repeated text, which Power BI compresses heavily, so they cost very little in the model.
+
+The shape is deliberate. A column-per-series layout would change shape whenever a series is added or removed, breaking every visual that referenced a column by name. With one row per reading you can add or remove series freely, put `Series` — or `Asset Type`, or `Logical Node` — on a legend or slicer, and write a single measure that works for all of them.
 
 <Note>
 **Timestamps are UTC.** They are not converted to local time, because on a scheduled refresh "local" would mean the refreshing machine's timezone rather than yours. Convert in your report if you need local time.
+</Note>
+
+### Turn off Auto date/time
+
+Power BI creates a hidden **date hierarchy** for every date column and uses it by default, which for this data is actively unhelpful: the hierarchy stops at **Day**, so every reading in a day collapses onto one point and a table shows many rows that look identical apart from the value.
+
+The connector returns the full timestamp, down to the second. To see it:
+
+- **For one visual:** in the field well, click the arrow beside `Timestamp` and pick **Timestamp** instead of **Date Hierarchy**.
+- **Everywhere, and recommended:** **File → Options and settings → Options → Data Load**, and clear **Auto date/time**. Do it under both *Global* and *Current File* — Global applies to new reports, Current File to the one you have open.
+
+<Note>
+This is worth doing regardless of the display problem. Each hidden date table is built per date column and can add noticeably to the size of a report — for time-series data at second resolution, it is cost with no benefit.
 </Note>
 
 ---
