@@ -4,7 +4,7 @@ title: "Power BI Connector"
 
 The Nexalis Power BI connector adds **Nexalis** to Power BI Desktop's *Get Data* window. You browse your sites and equipment in a tree, tick the series you want, and load them — no WarpScript, no hand-written queries.
 
-The connector talks to the real-time API at `{endpoint}/api/v0/exec`. There is no server component to deploy: install it, paste a read token, and start pulling data. If you would rather write the queries yourself, the [PowerBI Examples](./powerbi-examples) page shows the raw approach.
+The connector talks to the real-time API at `{endpoint}/api/v0/exec`. There is no server component to deploy: install it, paste a read token, and start pulling data. If you would rather write the queries yourself, the [Real-Time API](./real-time-api) page documents the endpoints and WarpScript directly.
 
 <Note>
 The Power BI connector is currently a **preview (beta)** release. Navigation and settings may still change between builds. A published report will keep working, but a saved query may need re-pointing after an upgrade — see [Upgrading](#upgrading).
@@ -44,11 +44,32 @@ Power BI only looks for connectors when it starts. If a window is open — or a 
 
 Double-click **Install Nexalis Power BI connector.bat** and approve the Windows prompt.
 
-That prompt is what tells Power BI our digital signature is trustworthy. It is required: without it Power BI blocks the connector with an *"Uncertified Connectors"* message even though the connector is signed. The preview is signed with an in-house certificate rather than a public one, which is why Power BI needs to be told about it explicitly.
+That prompt is what tells Power BI our digital signature is trustworthy. Without it, Power BI blocks the connector with an *"Uncertified Connectors"* message even though the connector is signed. The preview is signed with an in-house certificate rather than a public one, which is why Power BI needs to be told about it explicitly.
 
-### Step 4: Confirm
+### Step 4: Allow the connector to load
 
-Start Power BI Desktop, then **Home → Get Data → More…**, type `nexalis`, and choose **Nexalis (Beta)**.
+Start Power BI Desktop. If you see this, the certificate is not being honoured on your machine and one setting has to be changed before the connector will load:
+
+> **Uncertified Connectors**
+> The following connector has not been certified, and we are unable to verify that it is secure to use: **Nexalis**
+
+1. Select **File** in the upper-left.
+2. Select **Options and settings → Options**.
+3. In the left sidebar, under **GLOBAL**, scroll down and select **Security** (**Sécurité** on a French install).
+4. Under **Data Extensions**, select **(Not Recommended) Allow any extension to load without validation or warning**.
+5. Select **OK**, close Power BI Desktop completely, and reopen it.
+
+This is expected on machines where the certificate trust did not take effect — the administrator prompt in Step 3 was declined, Power BI's security settings are managed centrally by IT, or the Store build is not reading the trusted-certificate list. Nothing about the connector itself is different.
+
+<Warning>
+That setting is not specific to Nexalis. It tells Power BI to load *any* custom connector on that machine without validating it, so anything dropped into the connectors folder afterwards will also load silently.
+
+Where that is not acceptable, the alternative is to keep the recommended setting and have IT trust our certificate instead — see [Installing without administrator rights](#installing-without-administrator-rights) for the thumbprint and registry value. It achieves the same result for the Nexalis connector alone.
+</Warning>
+
+### Step 5: Confirm
+
+In Power BI Desktop, go to **Home → Get Data → More…**, type `nexalis`, and choose **Nexalis (Beta)**.
 
 ### Upgrading
 
@@ -210,7 +231,7 @@ Refresh in Power BI Desktop works normally.
 You can publish a report to the Power BI Service and colleagues can view it. What does **not** work yet is that published report refreshing itself on a schedule: the Power BI Service will not load a custom connector unless it goes through an on-premises data gateway.
 
 <Warning>
-This is a property of custom connectors in Power BI, not a limitation of the Nexalis API — the API is perfectly reachable from the cloud. If you need a dashboard that stays current on its own, the options are an on-premises data gateway with the connector installed on it, or the query-based approach on the [PowerBI Examples](./powerbi-examples) page, which needs no gateway. Contact [contact@nexalis.io](mailto:contact@nexalis.io) to discuss which fits.
+This is a property of custom connectors in Power BI, not a limitation of the Nexalis API — the API is perfectly reachable from the cloud. If you need a dashboard that stays current on its own, the options are an on-premises data gateway with the connector installed on it, or a Power Query query written directly against the [Real-Time API](./real-time-api) — a plain web query is not a custom connector, so the Service can refresh it without a gateway. Contact [contact@nexalis.io](mailto:contact@nexalis.io) to discuss which fits.
 </Warning>
 
 The connector loads data into the model (import mode). DirectQuery is not available: Power BI only supports DirectQuery through ODBC drivers, not through custom connectors.
@@ -271,7 +292,7 @@ If the interval is finer than a tag's logging rate, the extra buckets are interp
 ## Troubleshooting
 
 **"Uncertified Connectors"**
-The administrator step did not complete. Re-run the installer and approve the Windows prompt, or see below.
+Power BI is not treating our signature as trusted. Either re-run the installer and approve the Windows prompt, or change the Data Extensions setting as described in [Allow the connector to load](#step-4-allow-the-connector-to-load). If neither is possible on a managed machine, IT can trust the certificate directly — see [Installing without administrator rights](#installing-without-administrator-rights).
 
 **Nexalis does not appear in Get Data**
 Power BI was running during the installation, or is still running in the background. Close it, confirm no `PBIDesktop` process remains in Task Manager, and reopen.
@@ -309,5 +330,4 @@ This is Microsoft's documented mechanism for trusting a third-party connector. I
 
 - [Real-Time API](./real-time-api) — the underlying API, labels and attributes
 - [Nexalis Macros](./nexalis-macros) — the aggregation macros the connector uses
-- [PowerBI Examples](./powerbi-examples) — writing the queries yourself instead
 - [Excel Add-in](./excel-add-in) — the same data in worksheets
