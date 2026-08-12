@@ -54,7 +54,11 @@ Start Power BI Desktop, then **Home → Get Data → More…**, type `nexalis`, 
 
 Run **Install Nexalis Power BI connector.bat** from the newer zip, then restart Power BI Desktop. Reports keep working, but if an upgrade changes how the tree is organised, a saved query that navigates to a specific folder may need re-pointing — open **Transform data** and re-select from the Navigator.
 
-Upgrades do **not** ask for administrator rights. That prompt exists only to trust our signature, and once it has been approved on a machine there is nothing further to change, so seeing no prompt on an update is correct.
+The administrator prompt appears the first time a given signing certificate is used on a machine. Most upgrades do not ask again — but an upgrade that changes the certificate does, once.
+
+<Warning>
+**Upgrading from a release before this one:** the tree no longer contains **All … (aggregated)** entries. They made browsing the tree fetch data, which is why expanding a large folder could take minutes. A saved query that selected one will no longer resolve and should be replaced with a [`Nexalis.Branch`](#loading-a-whole-branch) call. Queries that selected individual data points are unaffected.
+</Warning>
 
 To remove it, run **Uninstall Nexalis Power BI connector.bat**.
 
@@ -130,9 +134,7 @@ The same hierarchy as the **Catalog Tree** in the Nexalis customer portal, and t
 By asset model
  ├── Site Level (SITE)
  ├── PV Inverter (INV)
- │    ├── All PV Inverter (aggregated)
  │    ├── Three Phase Measurements (MMXU)
- │    │    ├── All Three Phase Measurements (aggregated)
  │    │    ├── Active Power (P) (TotW)
  │    │    └── Voltage (PPV)
  │    └── DC Electrical Measurements (MMDC)
@@ -168,23 +170,39 @@ becomes `TRACKERS → TRK_31 → NCU_2 → …`, up to four levels deep, with an
 Seeing fewer grouping options on one site than another is expected. The connector hides an axis that cannot subdivide anything, rather than offering a folder that just contains the whole site.
 </Note>
 
-### Loading a whole branch, and mixing several
+### Selecting several data points
 
-Every folder contains an **All &lt;name&gt; (aggregated)** entry alongside its contents. That entry loads every series beneath it at once, aligned on the same timestamps — usually what you want for a chart, because the series can then be compared and combined directly.
+Tick as many data points as you like, from anywhere in the tree, and press **Load**. Every selection returns the same columns on the same time grid, so a report covering meter, inverter, battery and meteorological data appends into one table and compares directly.
 
-Under **By asset model** that entry appears at *every* level, so you can load all of one inverter's three-phase measurements, or everything on every inverter, without clicking down to individual points.
+Each ticked entry becomes its own query, so this suits tens of series rather than thousands. For a whole branch, use the function below.
 
-**Tick entries from different branches in the same pass.** A report covering meter, inverter, battery and meteorological data is built by selecting a branch from each — every selection returns the same columns on the same time grid, so they append into one table and compare directly.
+---
+
+## Loading a whole branch
+
+To load every series under a branch — all the inverters at a site, say — call **`Nexalis.Branch`** rather than ticking entries in the tree. In Power BI: **Home → Get Data → Blank Query → Advanced Editor**, and paste:
+
+```
+= Nexalis.Branch("https://yourcompany.app.nexalis.io", "Salima", "INV", null, null, "Last 7 days", null, null, 60)
+```
+
+The arguments are: endpoint, site, then the three **codes** in brackets in the navigator — asset type, logical node, data object — followed by the same time settings the connection dialog offers. Omit a level with `null` to take everything below it:
+
+| | |
+|---|---|
+| `"INV", null, null` | every inverter series at the site |
+| `"INV", "MMXU", null` | every three-phase measurement on every inverter |
+| `"INV", "MMXU", "TotW"` | active power on every inverter |
+
+The codes are case-sensitive, and the result has exactly the same columns as anything loaded from the tree, so the two append together.
+
+<Note>
+This is a function rather than an entry in the tree on purpose. Power BI evaluates a tree entry's data whenever it counts or previews the folder containing it — so an entry that loaded a whole branch made simply *browsing* the tree fetch megabytes of readings, and expanding a large branch could run for minutes. Nothing evaluates a function until you call it.
+</Note>
 
 ### How long a big branch takes
 
-Large branches are supported — a full inverter report across ten thousand series is a normal thing to want — but they are not instant. Any branch big enough to notice says so in its own name before you select it:
-
-```
-All PV Inverter (INV) (aggregated) - 11408 series, expect minutes
-```
-
-As a rough guide: **thousands of series take seconds, tens of thousands take minutes.** The upper limit is 20,000 series in one selection.
+Large branches are supported — a full inverter report across ten thousand series is a normal thing to want — but they are not instant. As a rough guide: **thousands of series take seconds, tens of thousands take minutes.** The upper limit is 20,000 series in one call.
 
 <Note>
 Widening the interval does **not** speed this up. Every matching series is read across the whole window whatever the interval, so the interval changes how many rows come back, not how much work the server does. To make a large selection faster, shorten the time range or pick a smaller branch.
@@ -302,11 +320,11 @@ If the interval is finer than a tag's logging rate, the extra buckets are interp
 
 **Blank values in a row that otherwise looks fine.** A blank is not a gap in the data — it means Nexalis was collecting normally but the source itself reported nothing, typically a sensor or controller that was offline. That is deliberately different from a series returning *no rows at all*, which means nothing was recorded in that window. A source that stays offline can produce a series that is blank throughout.
 
-**The `[12]` numbers beside some folders, but not others.** Power BI puts that badge there itself, by counting what is directly inside a folder once it has evaluated it — the connector never supplies it. Three things follow. It counts only **one level down**, so a folder showing `[10]` may contain thousands of tags further in. On a folder of data points it is one *more* than the number of points, because it includes the **All … (aggregated)** entry. And it counts **catalogued tags, not series that will load** — most tags are dormant in any given window, so a folder marked `[1,099]` might return a couple of hundred series. Folders with no badge simply have not been evaluated yet; the larger ones take longer, and the number appears once you open them.
+**The `[12]` numbers beside some folders, but not others.** Power BI puts that badge there itself, by counting what is directly inside a folder once it has evaluated it — the connector never supplies it. Two things follow. It counts only **one level down**, so a folder showing `[10]` may contain thousands of tags further in. And it counts **catalogued tags, not series that will load** — most tags are dormant in any given window, so a folder marked `[1,099]` might return a couple of hundred series. Folders with no badge simply have not been evaluated yet; the larger ones take longer, and the number appears once you open them.
 
 **A message saying the selection is too large.** A deliberate guard, so that an oversized selection fails immediately rather than leaving Power BI busy indefinitely. The message says which limit was reached and what to change — usually a smaller folder, a shorter time range, or a wider interval.
 
-**"expect minutes" in a folder's name.** Not a warning that something is wrong — a heads-up that a branch is big enough to take a while, shown before you commit to it. See below.
+**No "load everything in this folder" entry.** Deliberate. Power BI evaluates a tree entry's data whenever it counts or previews the folder it sits in, so an entry like that turned browsing into loading. Use [`Nexalis.Branch`](#loading-a-whole-branch) instead.
 
 ---
 
