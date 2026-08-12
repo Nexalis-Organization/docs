@@ -4,7 +4,7 @@ title: "Power BI Connector"
 
 The Nexalis Power BI connector adds **Nexalis** to Power BI Desktop's *Get Data* window. You browse your sites and equipment in a tree, tick the series you want, and load them — no WarpScript, no hand-written queries.
 
-The connector talks to the real-time API at `{endpoint}/api/v0/exec`. There is no server component to deploy: install it, paste a read token, and start pulling data. If you would rather write the queries yourself, the [Real-Time API](./real-time-api) page documents the endpoints and WarpScript directly.
+The connector talks to the real-time API at `https://yourcompany.app.nexalis.io/api/v0/exec`. There is no server component to deploy: install it, paste a read token, and start pulling data.
 
 <Note>
 The Power BI connector is currently a **preview (beta)** release. Navigation and settings may still change between builds. A published report will keep working, but a saved query may need re-pointing after an upgrade — see [Upgrading](#upgrading).
@@ -44,7 +44,9 @@ Power BI only looks for connectors when it starts. If a window is open — or a 
 
 Double-click **Install Nexalis Power BI connector.bat** and approve the Windows prompt.
 
-That prompt is what tells Power BI our digital signature is trustworthy. Without it, Power BI blocks the connector with an *"Uncertified Connectors"* message even though the connector is signed. The preview is signed with an in-house certificate rather than a public one, which is why Power BI needs to be told about it explicitly.
+That prompt is what tells Power BI our digital signature is trustworthy. Without it, Power BI blocks the connector with an *"Uncertified Connectors"* message even though the connector is signed and the signature verifies.
+
+Power BI is stricter than Windows here, and in a way worth understanding before your IT team asks. It does not use the Windows certificate stores to decide about connectors: it keeps its own allowlist of signing-certificate thumbprints, and a connector loads under the recommended security setting only if its thumbprint appears in that list. That applies to every third-party connector whoever issued the certificate — a certificate from a public authority does not change it. Only Microsoft's connector certification programme removes the step. The prompt is what adds our thumbprint to the list.
 
 ### Step 4: Allow the connector to load
 
@@ -59,7 +61,7 @@ Start Power BI Desktop. If you see this, the certificate is not being honoured o
 4. Under **Data Extensions**, select **(Not Recommended) Allow any extension to load without validation or warning**.
 5. Select **OK**, close Power BI Desktop completely, and reopen it.
 
-This is expected on machines where the certificate trust did not take effect — the administrator prompt in Step 3 was declined, Power BI's security settings are managed centrally by IT, or the Store build is not reading the trusted-certificate list. Nothing about the connector itself is different.
+This is expected on machines where the thumbprint did not reach Power BI's allowlist — the administrator prompt in Step 3 was declined or failed, Power BI's security settings are managed centrally by your IT team, or Power BI had not been restarted since the installer ran. Nothing about the connector itself is different.
 
 <Warning>
 That setting is not specific to Nexalis. It tells Power BI to load *any* custom connector on that machine without validating it, so anything dropped into the connectors folder afterwards will also load silently.
@@ -322,7 +324,7 @@ Value name : TrustedCertificateThumbprints
 Value type : REG_MULTI_SZ
 ```
 
-This is Microsoft's documented mechanism for trusting a third-party connector. It does not lower any other Power BI security setting, and it applies only to connectors signed with that specific certificate.
+This is [Microsoft's documented mechanism](https://learn.microsoft.com/power-bi/connect-data/desktop-trusted-third-party-connectors) for trusting a third-party connector, and it is the narrower of the two routes: it does not lower any other Power BI security setting, and it applies only to connectors signed with that one certificate. The Data Extensions setting in [Step 4](#step-4-allow-the-connector-to-load) is the blanket alternative where the registry value cannot be set.
 
 ---
 
