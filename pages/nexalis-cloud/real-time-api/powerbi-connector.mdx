@@ -48,28 +48,17 @@ That prompt is what tells Power BI our digital signature is trustworthy. Without
 
 Power BI is stricter than Windows here, and in a way worth understanding before your IT team asks. It does not use the Windows certificate stores to decide about connectors: it keeps its own allowlist of signing-certificate thumbprints, and a connector loads under the recommended security setting only if its thumbprint appears in that list. That applies to every third-party connector whoever issued the certificate — a certificate from a public authority does not change it. Only Microsoft's connector certification programme removes the step. The prompt is what adds our thumbprint to the list.
 
-### Step 4: Allow the connector to load
+The installer checks that the step actually worked and tells you so:
 
-Start Power BI Desktop. If you see this, the certificate is not being honoured on your machine and one setting has to be changed before the connector will load:
+```
+trust step : requesting administrator rights...
+  certificate trusted (6421D03C0D6BCC38609ED0A7486660AD16BFDF52)
+             verified: the thumbprint is now allowlisted
+```
 
-> **Uncertified Connectors**
-> The following connector has not been certified, and we are unable to verify that it is secure to use: **Nexalis**
+If it reports anything else, read it before continuing — the connector will have installed, but Power BI will refuse to load it. [Troubleshooting](#troubleshooting) covers what to do.
 
-1. Select **File** in the upper-left.
-2. Select **Options and settings → Options**.
-3. In the left sidebar, under **GLOBAL**, scroll down and select **Security** (**Sécurité** on a French install).
-4. Under **Data Extensions**, select **(Not Recommended) Allow any extension to load without validation or warning**.
-5. Select **OK**, close Power BI Desktop completely, and reopen it.
-
-This is expected on machines where the thumbprint did not reach Power BI's allowlist — the administrator prompt in Step 3 was declined or failed, Power BI's security settings are managed centrally by your IT team, or Power BI had not been restarted since the installer ran. Nothing about the connector itself is different.
-
-<Warning>
-That setting is not specific to Nexalis. It tells Power BI to load *any* custom connector on that machine without validating it, so anything dropped into the connectors folder afterwards will also load silently.
-
-Where that is not acceptable, the alternative is to keep the recommended setting and have IT trust our certificate instead — see [Installing without administrator rights](#installing-without-administrator-rights) for the thumbprint and registry value. It achieves the same result for the Nexalis connector alone.
-</Warning>
-
-### Step 5: Confirm
+### Step 4: Confirm
 
 In Power BI Desktop, go to **Home → Get Data → More…**, type `nexalis`, and choose **Nexalis (Beta)**.
 
@@ -358,7 +347,32 @@ If the interval is finer than a tag's logging rate, the extra buckets are interp
 ## Troubleshooting
 
 **"Uncertified Connectors"**
-Power BI is not treating our signature as trusted. Either re-run the installer and approve the Windows prompt, or change the Data Extensions setting as described in [Allow the connector to load](#step-4-allow-the-connector-to-load). If neither is possible on a managed machine, IT can trust the certificate directly — see [Installing without administrator rights](#installing-without-administrator-rights).
+
+> The following connector has not been certified, and we are unable to verify that it is secure to use: **Nexalis**
+
+Our thumbprint is not in Power BI's allowlist. The connector itself is fine — it is signed, and the signature verifies — so this is about the trust step, not the certificate.
+
+Work through these in order:
+
+1. **Re-run the installer and approve the prompt.** It reports whether the thumbprint reached the allowlist, so it will tell you if the step is failing rather than being skipped.
+2. **Restart Power BI Desktop completely.** It reads the allowlist at startup, so a trust step applied while it was open has no effect until then. Check Task Manager for a lingering `PBIDesktop`.
+3. **Ask IT to add the thumbprint** if you cannot approve the prompt — see [Installing without administrator rights](#installing-without-administrator-rights). This is the right answer on a managed machine, and it keeps Power BI's recommended security setting.
+
+### Loading the connector without trusting the certificate
+
+If none of the above is possible — a locked-down machine where the registry value cannot be set at all — Power BI can be told to load custom connectors without validating them:
+
+1. Select **File** in the upper-left.
+2. Select **Options and settings → Options**.
+3. In the left sidebar, under **GLOBAL**, scroll down and select **Security** (**Sécurité** on a French install).
+4. Under **Data Extensions**, select **(Not Recommended) Allow any extension to load without validation or warning**.
+5. Select **OK**, close Power BI Desktop completely, and reopen it.
+
+<Warning>
+This is a last resort, and it is not specific to Nexalis. It tells Power BI to load *any* custom connector on that machine without validating it, so anything dropped into the connectors folder afterwards loads silently too. Microsoft labels it *Not Recommended* for that reason.
+
+Trusting our thumbprint achieves the same result for the Nexalis connector alone, and leaves the setting where Microsoft wants it. Prefer step 3 above.
+</Warning>
 
 **Nexalis does not appear in Get Data**
 Power BI was running during the installation, or is still running in the background. Close it, confirm no `PBIDesktop` process remains in Task Manager, and reopen.
@@ -388,7 +402,7 @@ Value name : TrustedCertificateThumbprints
 Value type : REG_MULTI_SZ
 ```
 
-This is [Microsoft's documented mechanism](https://learn.microsoft.com/power-bi/connect-data/desktop-trusted-third-party-connectors) for trusting a third-party connector, and it is the narrower of the two routes: it does not lower any other Power BI security setting, and it applies only to connectors signed with that one certificate. The Data Extensions setting in [Step 4](#step-4-allow-the-connector-to-load) is the blanket alternative where the registry value cannot be set.
+This is [Microsoft's documented mechanism](https://learn.microsoft.com/power-bi/connect-data/desktop-trusted-third-party-connectors) for trusting a third-party connector, and it is the narrower of the two routes: it does not lower any other Power BI security setting, and it applies only to connectors signed with that one certificate. [Loading the connector without trusting the certificate](#loading-the-connector-without-trusting-the-certificate) is the blanket alternative, for machines where the registry value cannot be set at all.
 
 ---
 
