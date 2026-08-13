@@ -1,0 +1,403 @@
+---
+title: "Power BI Connector"
+---
+
+The Nexalis Power BI connector adds **Nexalis** to Power BI Desktop's *Get Data* window. You browse your sites and equipment in a tree, tick the series you want, and load them — no hand-written queries.
+
+The connector talks to the real-time API at `https://yourcompany.app.nexalis.io/api/v0/exec`. There is no server component to deploy: install it, paste a read token, and start pulling data.
+
+<Note>
+The Power BI connector is currently a **preview (beta)** release. Navigation and settings may still change between builds. A published report will keep working, but a saved query may need re-pointing after an upgrade — see [Upgrading](#upgrading).
+</Note>
+
+---
+
+## Requirements
+
+- **Power BI Desktop**, installed from the **Microsoft Store**.
+
+  Use the Store version regardless of your machine. On an Arm laptop — a Surface with a Snapdragon processor, for example — it is the *only* version that installs; the download from Microsoft's website fails partway through with a Windows Installer error. On Intel and AMD machines the Store version works equally well, so choosing it avoids the question entirely.
+
+- **Administrator rights**, for one step of the installation — or an IT team willing to apply [one registry setting](#installing-without-administrator-rights) instead.
+
+- A **Nexalis read token** and your endpoint address, for example `https://yourcompany.app.nexalis.io`.
+
+---
+
+## Installation
+
+### Step 1: Get the installer
+
+Download **`Nexalis-PowerBI-Connector.zip`** from the [connector releases page](https://github.com/Nexalis-Organization/nexalis-powerbi-connector-releases/releases).
+
+Unzip it, keeping all the files together in one folder.
+
+<Note>
+The connector is in preview, so releases there are marked *Pre-release*. Take the newest one.
+</Note>
+
+### Step 2: Close Power BI Desktop
+
+Power BI only looks for connectors when it starts. If a window is open — or a Power BI process is still running in the background after you closed the window — it will not find the connector. If in doubt, open Task Manager and check for `PBIDesktop`.
+
+### Step 3: Run the installer
+
+Double-click **Install Nexalis Power BI connector.bat** and approve the Windows prompt, which tells Power BI our signature is trustworthy.
+
+The installer finishes by confirming that step worked. If it reports anything else, [Troubleshooting](#troubleshooting) covers what to do — the connector will have installed, but Power BI will refuse to load it.
+
+### Step 4: Confirm
+
+In Power BI Desktop, go to **Home → Get Data → More…**, type `nexalis`, and choose **Nexalis (Beta)**.
+
+### Upgrading
+
+Run **Install Nexalis Power BI connector.bat** from the newer zip, then restart Power BI Desktop. Reports keep working, but if an upgrade changes how the tree is organised, a saved query that navigates to a specific folder may need re-pointing — open **Transform data** and re-select from the Navigator.
+
+The administrator prompt appears the first time a **given signing certificate** is used on a machine. Most upgrades therefore do not ask again, and seeing no prompt on an update is correct — but an upgrade that changes the certificate does ask, once.
+
+To remove it, run **Uninstall Nexalis Power BI connector.bat**.
+
+---
+
+## Connecting to Nexalis Cloud
+
+Selecting **Nexalis (Beta)** opens a settings dialog:
+
+| Setting | What it does |
+|---|---|
+| **Nexalis endpoint** | Your endpoint, e.g. `https://yourcompany.app.nexalis.io` |
+| **Time range** | A rolling window — `Last hour`, `Last 24 hours`, `Last 7 days`, `Last 30 days` — or `Custom (use Start/End)` |
+| **Start / End (UTC)** | Only used with `Custom` |
+| **Interval (minutes)** | Bucket width for aggregation. Default 15 |
+| **Aggregation** | How values are summarised per bucket. Default `average (time-weighted)` |
+
+Then paste your read token. Windows stores it in the credential manager, so you do this once per endpoint — the token is not saved inside the `.pbix` file.
+
+### Replacing an expired token
+
+Read tokens expire. Because Power BI remembers the token per endpoint and keeps reusing it, a new token has to be handed to Power BI rather than simply obtained from us.
+
+When the connector reports a rejected token, the error offers **Edit credentials** — click it and paste the new one. That is the whole fix.
+
+If nothing is currently failing, or the banner has gone:
+
+1. **File → Options and settings → Data source settings**
+2. Select your Nexalis endpoint, e.g. `https://yourcompany.app.nexalis.io`
+3. **Edit Permissions… → Credentials: Edit**, paste the new token, **Save**
+
+<Note>
+If your endpoint is not listed, switch the selector at the top of that dialog from **Data sources in current file** to **Global permissions**. The token is stored per machine, not per report, so a report you have just opened may not list it.
+</Note>
+
+**Clear Permissions** is the alternative: it forgets the token entirely, and Power BI asks for a new one next time the connector is used. Refreshing a report is enough to trigger the prompt.
+
+### Rolling versus fixed windows
+
+A rolling range is recomputed every time the report refreshes, so a dashboard keeps moving with the data. `Custom (use Start/End)` pins an absolute window that never moves, which is what you want when investigating a specific event.
+
+<Note>
+The blank entry at the top of the **Time range** list means the same as `Last 24 hours` — it is how Power BI represents "not specified" for an optional setting.
+</Note>
+
+### Aggregation
+
+`average (time-weighted)` is the default because a plain mean over-weights whatever happened to be scanned most often within the bucket, which is wrong for irregularly sampled process data. `mean`, `min`, `max`, `first` and `last` are also available.
+
+`raw (no aggregation)` returns every stored value. A single series can be tens of thousands of points per day, so use it deliberately and over short windows.
+
+All modes return **scaled** values — the `multiplier` and `adder` from the Nexalis data model are applied, so a reading is in the units named by `engUnits`. See [Nexalis Macros](./nexalis-macros) for the underlying behaviour.
+
+---
+
+## Browsing your data
+
+The Navigator shows your sites. Inside each one, the connector offers only the groupings that actually work for that site's data:
+
+```
+Site
+ ├── By asset model     what the equipment is: inverters, meters, met stations
+ ├── By tag path        splits the data point name into a hierarchy
+ ├── By asset type      one flat list per asset type
+ └── By device
+```
+
+### By asset model
+
+The same hierarchy as the **Catalog Tree** in the Nexalis customer portal, and the place to start if your tags are mapped to the Nexalis data model:
+
+```
+By asset model
+ ├── Site Level (SITE)
+ ├── PV Inverter (INV)
+ │    ├── Three Phase Measurements (MMXU)
+ │    │    ├── Active Power (P) (TotW)
+ │    │    └── Voltage (PPV)
+ │    └── DC Electrical Measurements (MMDC)
+ ├── Meteorological Station (MeteoSta)
+ └── Tags without standardization
+```
+
+Asset type, then logical node, then data object, then the individual points. Each level shows the description from the Nexalis data model with its code in brackets — the code is kept visible because it is what appears in the tag itself, in the portal, and in any support conversation.
+
+Tags that were never mapped to the data model are collected under **Tags without standardization**, which opens straight onto its data points.
+
+<Note>
+This axis is offered wherever *any* tag at the site carries an asset type, with no minimum. On a site where only part of the data is mapped, that part is still usually the part people work with — and **By tag path** remains available for everything else.
+</Note>
+
+### By tag path
+
+Offered wherever your data point names have a usable structure, which is most sites. A name like
+
+```
+ns=2;s=[default]/TRACKERS/TRK_31/NCU_2/SPC_032/SETPOINT
+```
+
+becomes `TRACKERS → TRK_31 → NCU_2 → …`, up to four levels deep, with any remaining segments shown in the leaf name. It is the only grouping that reaches every tag at a site, mapped or not.
+
+### By asset type, By device
+
+**By asset type** is the first level of **By asset model** with a flat list of points underneath, and is kept so that reports built before the asset model existed keep working. For new reports, use **By asset model**.
+
+**By device** appears only when the site has more than one `deviceID` — on sites where every tag arrives through a single SCADA gateway, that grouping would be one folder containing everything, so it is hidden.
+
+<Note>
+Seeing fewer grouping options on one site than another is expected. The connector hides an axis that cannot subdivide anything, rather than offering a folder that just contains the whole site.
+</Note>
+
+### Selecting several data points
+
+Tick as many data points as you like, from anywhere in the tree, and press **Load**. Every selection returns the same columns on the same time grid, so a report covering meter, inverter, battery and meteorological data appends into one table and compares directly.
+
+Each ticked entry becomes its own query, so this suits tens of series rather than thousands. For a whole branch, use the function below.
+
+---
+
+## Loading a whole branch
+
+To load every series under a branch — all the inverters at a site, say — call **`Nexalis.Branch`** rather than ticking entries in the tree. In Power BI: **Home → Get Data → Blank Query → Advanced Editor**, and paste:
+
+```
+= Nexalis.Branch("https://yourcompany.app.nexalis.io", "Salima", "INV", null, null, "Last 7 days", null, null, 60)
+```
+
+The arguments are: endpoint, site, then the three **codes** in brackets in the navigator — asset type, logical node, data object — followed by the same time settings the connection dialog offers. Omit a level with `null` to take everything below it:
+
+| | |
+|---|---|
+| `"INV", null, null` | every inverter series at the site |
+| `"INV", "MMXU", null` | every three-phase measurement on every inverter |
+| `"INV", "MMXU", "TotW"` | active power on every inverter |
+
+The codes are case-sensitive, and the result has exactly the same columns as anything loaded from the tree, so the two append together.
+
+<Note>
+This is a function rather than an entry in the tree on purpose. Power BI evaluates a tree entry's data whenever it counts or previews the folder containing it — so an entry that loaded a whole branch made simply *browsing* the tree fetch megabytes of readings, and expanding a large branch could run for minutes. Nothing evaluates a function until you call it.
+</Note>
+
+### How long a big branch takes
+
+Large branches are supported — a full inverter report across ten thousand series is a normal thing to want — but they are not instant. As a rough guide: **thousands of series take seconds, tens of thousands take minutes.** The upper limit is 20,000 series in one call.
+
+<Note>
+Widening the interval does **not** speed this up. Every matching series is read across the whole window whatever the interval, so the interval changes how many rows come back, not how much work the server does. To make a large selection faster, shorten the time range or pick a smaller branch.
+</Note>
+
+Raw mode is capped far lower, at 100 series, because raw data is unbounded — a single series can be tens of thousands of points a day.
+
+<Note>
+Each ticked entry becomes its own query with its own copy of the time-range settings. If you expect to select from several branches, set up the shared parameters described in [Changing the window across many queries](#changing-the-window-across-many-queries) first — otherwise changing the window later means editing each query separately.
+</Note>
+
+---
+
+## What you get
+
+Each query returns a long, tall table:
+
+| Column | |
+|---|---|
+| `Site` | `siteName` |
+| `Device` | `deviceID` — usually the SCADA gateway |
+| `Sub Device` | `subDeviceID` — the individual piece of equipment |
+| `Asset Type` | e.g. `PV Inverter (INV)` |
+| `Logical Node` | e.g. `Three Phase Measurements (MMXU)` |
+| `Data Object` | e.g. `Active Power (P) (TotW)` |
+| `Sub Data Object` | where the tag has one |
+| `Measurement Type` | `Analog` or `Discrete` |
+| `Series` | `dataPoint` |
+| `Units` | `engUnits`, where the tag is standardised |
+| `Timestamp` | UTC, full precision — use this for axes and measures |
+| `Timestamp (UTC)` | the same instant as readable text — use this in tables |
+| `Value` | scaled |
+
+The data-model columns carry the same labels as the folders you browsed, so a slicer reads the same way the tree did. They are blank for tags that were never standardised. All of them are low-cardinality repeated text, which Power BI compresses heavily, so they cost very little in the model.
+
+The shape is deliberate. A column-per-series layout would change shape whenever a series is added or removed, breaking every visual that referenced a column by name. With one row per reading you can add or remove series freely, put `Series` — or `Asset Type`, or `Logical Node` — on a legend or slicer, and write a single measure that works for all of them.
+
+<Note>
+**Timestamps are UTC.** They are not converted to local time, because on a scheduled refresh "local" would mean the refreshing machine's timezone rather than yours. Convert in your report if you need local time.
+</Note>
+
+### Two timestamp columns, and why
+
+Power BI builds a hidden **date hierarchy** for every date column and uses it by default. That hierarchy stops at **Day** — so with the default 15-minute interval, every reading in a day collapses onto one label and a table shows rows that appear identical apart from the value. There is no way for a connector to opt out of it.
+
+So the connector returns the same instant twice:
+
+- **`Timestamp`** — a real date/time at full precision. Use it for chart axes, measures, relationships and anything time-intelligent. Power BI may show it as a hierarchy; to see the actual value, click the arrow beside the field in the field well and pick **Timestamp** rather than **Date Hierarchy**.
+- **`Timestamp (UTC)`** — the same instant as text, `2026-08-12 14:45:00`. Text cannot acquire a date hierarchy, so this always shows in full with no setup. It sorts correctly, and in raw mode it widens to milliseconds so that closely spaced readings stay distinguishable. Use it in tables and matrices.
+
+<Note>
+It costs far less than it looks. Every series in a load shares the same time grid, so the number of distinct text values is the number of *intervals*, not the number of rows — Power BI stores each label once for the whole table.
+</Note>
+
+**Turning off Auto date/time is still worth it.** **File → Options and settings → Options → Data Load**, clear **Auto date/time** under both *Global* and *Current File*. Each hidden date table is built per date column and adds real size to a report; for time-series data at this resolution it is cost with no benefit.
+
+---
+
+## Refreshing
+
+Refresh in Power BI Desktop works normally.
+
+You can publish a report to the Power BI Service and colleagues can view it. What does **not** work yet is that published report refreshing itself on a schedule: the Power BI Service will not load a custom connector unless it goes through an on-premises data gateway.
+
+<Warning>
+This is a property of custom connectors in Power BI, not a limitation of the Nexalis API — the API is perfectly reachable from the cloud. If you need a dashboard that stays current on its own, the options are an on-premises data gateway with the connector installed on it, or a Power Query query written directly against the [Real-Time API](./real-time-api) — a plain web query is not a custom connector, so the Service can refresh it without a gateway. Contact [contact@nexalis.io](mailto:contact@nexalis.io) to discuss which fits.
+</Warning>
+
+The connector loads data into the model (import mode). DirectQuery is not available: Power BI only supports DirectQuery through ODBC drivers, not through custom connectors.
+
+---
+
+## Changing the window across many queries
+
+Each series you load becomes its own query with its own settings, so changing the time range means editing each one. To get a single point of control, create one query that holds the connection and have the others navigate from it.
+
+**Home → New Source → Blank Query → Advanced Editor**, paste the following, and rename the query to `Nexalis`:
+
+```m
+Nexalis.Contents(
+    "https://yourcompany.app.nexalis.io",
+    "Last 7 days"
+)
+```
+
+Right-click it and untick **Enable load** — it is a navigation table, not data.
+
+Then open each series query and replace its `Source` step with a reference to that one. A whole query collapses to a single line:
+
+```m
+Nexalis{[Key="Site"]}[Data]{[Key="By tag path"]}[Data]{[Key="TRACKERS"]}[Data]{[Key="TRK_31"]}[Data]
+```
+
+The `Key` values are exactly the names shown in the Navigator. Changing the window is now one edit.
+
+For a friendlier version, promote the settings to Power Query **parameters** so they can be changed from **Manage Parameters** without editing code — and export the result as a `.pbit` template so colleagues are prompted for the values when they open it.
+
+---
+
+## Choosing the interval
+
+The connector does not choose the bucket interval for you, because there is no single right answer. Within one site the logging rate is typically bimodal: roughly half the tags sit on a heartbeat of about one value per hour, while actively scanned tags log every few seconds. An interval that suits one over-serves the other.
+
+If the interval is finer than a tag's logging rate, the extra buckets are interpolation rather than measurement. That is often perfectly reasonable for a slowly varying analogue value, and misleading for a status or event tag.
+
+15 minutes is the default because it is the conventional reporting granularity for energy data. If your report needs something else, change it — and prefer the coarsest interval that answers your question.
+
+---
+
+## Things that look wrong but are not
+
+**Fewer series load than the folder listed.** Most data points are dormant in any given window — event tags that did not fire. A folder listing a thousand tags may return a couple of hundred series. Nothing is being dropped: every series with data in the window is returned, including booleans and integers.
+
+**`Tags without standardization`, or `(unclassified)` folders.** Data points that were never mapped to the Nexalis data model, so they carry no asset type. They are shown rather than hidden so that nothing disappears from the tree, and on most sites they are the majority of the tags — plants generally collect far more than anyone reads. Where the site also offers **By tag path**, browsing there is usually easier, since it covers every tag.
+
+**Blank values in a row that otherwise looks fine.** A blank is not a gap in the data — it means Nexalis was collecting normally but the source itself reported nothing, typically a sensor or controller that was offline. That is deliberately different from a series returning *no rows at all*, which means nothing was recorded in that window. A source that stays offline can produce a series that is blank throughout.
+
+**The `[12]` numbers beside some folders, but not others.** Power BI puts that badge there itself, by counting what is directly inside a folder once it has evaluated it — the connector never supplies it. Two things follow. It counts only **one level down**, so a folder showing `[10]` may contain thousands of tags further in. And it counts **catalogued tags, not series that will load** — most tags are dormant in any given window, so a folder marked `[1,099]` might return a couple of hundred series. Folders with no badge simply have not been evaluated yet; the larger ones take longer, and the number appears once you open them.
+
+**A message saying the selection is too large.** A deliberate guard, so that an oversized selection fails immediately rather than leaving Power BI busy indefinitely. The message says which limit was reached and what to change — usually a smaller folder, a shorter time range, or a wider interval.
+
+**No "load everything in this folder" entry.** Deliberate. Power BI evaluates a tree entry's data whenever it counts or previews the folder it sits in, so an entry like that turned browsing into loading. Use [`Nexalis.Branch`](#loading-a-whole-branch) instead.
+
+---
+
+## Troubleshooting
+
+**"Uncertified Connectors"**
+
+> The following connector has not been certified, and we are unable to verify that it is secure to use: **Nexalis**
+
+Our thumbprint is not in Power BI's allowlist. The connector itself is fine — it is signed, and the signature verifies — so this is about the trust step, not the certificate.
+
+Power BI is stricter than Windows here, and in a way worth understanding before your IT team asks. It does not use the Windows certificate stores to decide about connectors: it keeps its own allowlist of signing-certificate thumbprints, and a connector loads under the recommended security setting only if its thumbprint appears in that list. That applies to every third-party connector whoever issued the certificate — a certificate from a public authority does not change it. Only Microsoft's connector certification programme removes the step. The administrator prompt during installation is what adds our thumbprint to the list.
+
+A successful install says so in its last two lines:
+
+```
+trust step : requesting administrator rights...
+  certificate trusted (6421D03C0D6BCC38609ED0A7486660AD16BFDF52)
+             verified: the thumbprint is now allowlisted
+```
+
+Anything else means the thumbprint never reached the allowlist. Work through these in order:
+
+1. **Re-run the installer and approve the prompt.** It reports whether the thumbprint reached the allowlist, so it will tell you if the step is failing rather than being skipped.
+2. **Restart Power BI Desktop completely.** It reads the allowlist at startup, so a trust step applied while it was open has no effect until then. Check Task Manager for a lingering `PBIDesktop`.
+3. **Ask IT to add the thumbprint** if you cannot approve the prompt — see [Installing without administrator rights](#installing-without-administrator-rights). This is the right answer on a managed machine, and it keeps Power BI's recommended security setting.
+
+### Loading the connector without trusting the certificate
+
+If none of the above is possible — a locked-down machine where the registry value cannot be set at all — Power BI can be told to load custom connectors without validating them:
+
+1. Select **File** in the upper-left.
+2. Select **Options and settings → Options**.
+3. In the left sidebar, under **GLOBAL**, scroll down and select **Security** (**Sécurité** on a French install).
+4. Under **Data Extensions**, select **(Not Recommended) Allow any extension to load without validation or warning**.
+5. Select **OK**, close Power BI Desktop completely, and reopen it.
+
+<Warning>
+This is a last resort, and it is not specific to Nexalis. It tells Power BI to load *any* custom connector on that machine without validating it, so anything dropped into the connectors folder afterwards loads silently too. Microsoft labels it *Not Recommended* for that reason.
+
+Trusting our thumbprint achieves the same result for the Nexalis connector alone, and leaves the setting where Microsoft wants it. Prefer step 3 above.
+</Warning>
+
+**Nexalis does not appear in Get Data**
+Power BI was running during the installation, or is still running in the background. Close it, confirm no `PBIDesktop` process remains in Task Manager, and reopen.
+
+**`Container unexpectedly exited. Exit code: 0xC000026F`**
+A Windows issue on Arm laptops affecting Power Query's engine, not the connector or your data. Install the latest Windows updates and try again.
+
+**"Nexalis rejected the token… Token Expired"**
+Your read token has expired, which is expected eventually rather than a sign that anything is broken. See [Replacing an expired token](#replacing-an-expired-token).
+
+**A query that used to work now fails after an upgrade**
+The folder it navigated to may have been renamed or reorganised. Open **Transform data** and re-select the series from the Navigator.
+
+### Installing without administrator rights
+
+The connector files install without administrator rights; only trusting the certificate needs them. Ask your IT team to add this thumbprint
+
+```
+6421D03C0D6BCC38609ED0A7486660AD16BFDF52
+```
+
+to this registry value, creating the key if it does not exist:
+
+```
+HKEY_LOCAL_MACHINE\Software\Policies\Microsoft\Power BI Desktop
+Value name : TrustedCertificateThumbprints
+Value type : REG_MULTI_SZ
+```
+
+This is [Microsoft's documented mechanism](https://learn.microsoft.com/power-bi/connect-data/desktop-trusted-third-party-connectors) for trusting a third-party connector, and it is the narrower of the two routes: it does not lower any other Power BI security setting, and it applies only to connectors signed with that one certificate. [Loading the connector without trusting the certificate](#loading-the-connector-without-trusting-the-certificate) is the blanket alternative, for machines where the registry value cannot be set at all.
+
+---
+
+## Learn more
+
+- [Real-Time API](./real-time-api) — the underlying API, labels and attributes
+- [Nexalis Macros](./nexalis-macros) — the aggregation macros the connector uses
+- [Excel Add-in](./excel-add-in) — the same data in worksheets
