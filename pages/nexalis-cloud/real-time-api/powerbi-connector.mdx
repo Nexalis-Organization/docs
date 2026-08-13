@@ -77,7 +77,11 @@ In Power BI Desktop, go to **Home → Get Data → More…**, type `nexalis`, an
 
 Run **Install Nexalis Power BI connector.bat** from the newer zip, then restart Power BI Desktop. Reports keep working, but if an upgrade changes how the tree is organised, a saved query that navigates to a specific folder may need re-pointing — open **Transform data** and re-select from the Navigator.
 
-Upgrades do **not** ask for administrator rights. That prompt exists only to trust our signature, and once it has been approved on a machine there is nothing further to change, so seeing no prompt on an update is correct.
+The administrator prompt appears the first time a **given signing certificate** is used on a machine. Most upgrades therefore do not ask again, and seeing no prompt on an update is correct — but an upgrade that changes the certificate does ask, once.
+
+<Note>
+**Upgrading from v0.9.0 or earlier asks once more.** From v0.9.1 the connector is signed as *Nexalis, LLC* rather than under the in-house name used during early preview, so Power BI has a new thumbprint to allowlist. Approve it once and later upgrades go quiet again. The connector itself is unchanged by that switch.
+</Note>
 
 To remove it, run **Uninstall Nexalis Power BI connector.bat**.
 
@@ -355,7 +359,7 @@ The folder it navigated to may have been renamed or reorganised. Open **Transfor
 The connector files install without administrator rights; only trusting the certificate needs them. Ask your IT team to add this thumbprint
 
 ```
-720747328FD291FAD81AC3A332BE72BD6892530A
+6421D03C0D6BCC38609ED0A7486660AD16BFDF52
 ```
 
 to this registry value, creating the key if it does not exist:
