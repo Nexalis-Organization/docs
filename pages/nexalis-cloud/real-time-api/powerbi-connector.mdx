@@ -2,7 +2,7 @@
 title: "Power BI Connector"
 ---
 
-The Nexalis Power BI connector adds **Nexalis** to Power BI Desktop's *Get Data* window. You browse your sites and equipment in a tree, tick the series you want, and load them — no WarpScript, no hand-written queries.
+The Nexalis Power BI connector adds **Nexalis** to Power BI Desktop's *Get Data* window. You browse your sites and equipment in a tree, tick the series you want, and load them — no hand-written queries.
 
 The connector talks to the real-time API at `https://yourcompany.app.nexalis.io/api/v0/exec`. There is no server component to deploy: install it, paste a read token, and start pulling data.
 
@@ -18,7 +18,7 @@ The Power BI connector is currently a **preview (beta)** release. Navigation and
 
   Use the Store version regardless of your machine. On an Arm laptop — a Surface with a Snapdragon processor, for example — it is the *only* version that installs; the download from Microsoft's website fails partway through with a Windows Installer error. On Intel and AMD machines the Store version works equally well, so choosing it avoids the question entirely.
 
-- **Administrator rights**, for one step of the installation. If you cannot approve the prompt yourself, the connector still installs and your IT team can apply a single setting instead — see [Installing without administrator rights](#installing-without-administrator-rights).
+- **Administrator rights**, for one step of the installation — or an IT team willing to apply [one registry setting](#installing-without-administrator-rights) instead.
 
 - A **Nexalis read token** and your endpoint address, for example `https://yourcompany.app.nexalis.io`.
 
@@ -42,21 +42,9 @@ Power BI only looks for connectors when it starts. If a window is open — or a 
 
 ### Step 3: Run the installer
 
-Double-click **Install Nexalis Power BI connector.bat** and approve the Windows prompt.
+Double-click **Install Nexalis Power BI connector.bat** and approve the Windows prompt, which tells Power BI our signature is trustworthy.
 
-That prompt is what tells Power BI our digital signature is trustworthy. Without it, Power BI blocks the connector with an *"Uncertified Connectors"* message even though the connector is signed and the signature verifies.
-
-Power BI is stricter than Windows here, and in a way worth understanding before your IT team asks. It does not use the Windows certificate stores to decide about connectors: it keeps its own allowlist of signing-certificate thumbprints, and a connector loads under the recommended security setting only if its thumbprint appears in that list. That applies to every third-party connector whoever issued the certificate — a certificate from a public authority does not change it. Only Microsoft's connector certification programme removes the step. The prompt is what adds our thumbprint to the list.
-
-The installer checks that the step actually worked and tells you so:
-
-```
-trust step : requesting administrator rights...
-  certificate trusted (6421D03C0D6BCC38609ED0A7486660AD16BFDF52)
-             verified: the thumbprint is now allowlisted
-```
-
-If it reports anything else, read it before continuing — the connector will have installed, but Power BI will refuse to load it. [Troubleshooting](#troubleshooting) covers what to do.
+The installer finishes by confirming that step worked. If it reports anything else, [Troubleshooting](#troubleshooting) covers what to do — the connector will have installed, but Power BI will refuse to load it.
 
 ### Step 4: Confirm
 
@@ -67,14 +55,6 @@ In Power BI Desktop, go to **Home → Get Data → More…**, type `nexalis`, an
 Run **Install Nexalis Power BI connector.bat** from the newer zip, then restart Power BI Desktop. Reports keep working, but if an upgrade changes how the tree is organised, a saved query that navigates to a specific folder may need re-pointing — open **Transform data** and re-select from the Navigator.
 
 The administrator prompt appears the first time a **given signing certificate** is used on a machine. Most upgrades therefore do not ask again, and seeing no prompt on an update is correct — but an upgrade that changes the certificate does ask, once.
-
-<Note>
-**Upgrading from v0.9.0 or earlier asks once more.** From v0.9.1 the connector is signed as *Nexalis, LLC* rather than under the in-house name used during early preview, so Power BI has a new thumbprint to allowlist. Approve it once and later upgrades go quiet again. The connector itself is unchanged by that switch.
-</Note>
-
-<Warning>
-**Upgrading from a release before this one:** the tree no longer contains **All … (aggregated)** entries. They made browsing the tree fetch data, which is why expanding a large folder could take minutes. A saved query that selected one will no longer resolve and should be replaced with a [`Nexalis.Branch`](#loading-a-whole-branch) call. Queries that selected individual data points are unaffected.
-</Warning>
 
 To remove it, run **Uninstall Nexalis Power BI connector.bat**.
 
@@ -352,7 +332,17 @@ If the interval is finer than a tag's logging rate, the extra buckets are interp
 
 Our thumbprint is not in Power BI's allowlist. The connector itself is fine — it is signed, and the signature verifies — so this is about the trust step, not the certificate.
 
-Work through these in order:
+Power BI is stricter than Windows here, and in a way worth understanding before your IT team asks. It does not use the Windows certificate stores to decide about connectors: it keeps its own allowlist of signing-certificate thumbprints, and a connector loads under the recommended security setting only if its thumbprint appears in that list. That applies to every third-party connector whoever issued the certificate — a certificate from a public authority does not change it. Only Microsoft's connector certification programme removes the step. The administrator prompt during installation is what adds our thumbprint to the list.
+
+A successful install says so in its last two lines:
+
+```
+trust step : requesting administrator rights...
+  certificate trusted (6421D03C0D6BCC38609ED0A7486660AD16BFDF52)
+             verified: the thumbprint is now allowlisted
+```
+
+Anything else means the thumbprint never reached the allowlist. Work through these in order:
 
 1. **Re-run the installer and approve the prompt.** It reports whether the thumbprint reached the allowlist, so it will tell you if the step is failing rather than being skipped.
 2. **Restart Power BI Desktop completely.** It reads the allowlist at startup, so a trust step applied while it was open has no effect until then. Check Task Manager for a lingering `PBIDesktop`.
