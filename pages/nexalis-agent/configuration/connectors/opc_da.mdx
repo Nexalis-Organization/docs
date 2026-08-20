@@ -1,0 +1,362 @@
+---
+title: Guide - OPC DA Connector
+sidebar_position: 3
+---
+
+This guide explains how to configure and use the **OPC DA connector** in Nexalis Agent to collect data from OPC DA servers and forward it to Nexalis Cloud.
+
+---
+
+## 1. Introduction
+
+The OPC DA connector establishes DCOM communication using **OPC DA** protocol.
+
+Key features:
+- local communication with OPC DA servers
+- Subscriptions with configurable update intervals using either:
+   - **addNodeIDs**: specify nodes to monitor; the connector will only subscribe to the configured nodes or
+   - **ignorePaths**: subscribe to all nodes except those listed. 
+   - Note: addNodesIDs and ignorePaths are mutually exclusive and at least one must be configured.
+- Node-based tag configuration with pattern definition for flexible data collection  
+- Automatic recovery from connection or session failures
+
+---
+
+## 2. Configuration
+
+### communicationAddress and 32 vs 64 bit
+
+The `communicationAddress` in the OPC DA connector has the following format:
+
+```
+opcda://HOST/PROG/CLSID
+```
+
+- `HOST`: hostname of the server; leave it empty for localhost.
+
+- `PROG`: registered name of the server (preferred).
+
+- `CLSID`: GUID identifier of the OPC DA server. (optional).
+
+The OPC DA protocol is available in both 32-bit and 64-bit versions. The connector executable must use the same architecture as the OPC DA server.
+
+Therefore, there are separate connectors: `opcda32_connector` and `opcda64_connector`.
+
+
+The recommended format is:
+```
+opcda:///PROG
+```
+
+when possible.
+for example:
+
+```
+opcda:///Kepware.KEPServerEX.V6
+```
+
+if no prog id works or is available you can use the clsid.
+
+opcda:////7BC0CC8E-482C-47CA-ABDC-0FE7F9C6E729
+
+NexalisAgent can list available opcda 32bits/64bits servers.
+
+Example:
+
+```PS
+PS C:\Users\Administrator> NexalisAgent list-opcda32-servers
+[
+  {
+    "CLSID": "{C2615F37-4306-4669-861D-BF4D34834BA0}",
+    "Name": "Tunneller:192.168.56.101:Matrikon.OPC.Simulation.1",
+    "ProgID": "Tunneller:192.168.56.101:Matrikon.OPC.Simulation.1"
+  }
+]
+PS C:\Users\Administrator> NexalisAgent list-opcda64-servers
+[
+  {
+    "CLSID": "{C2615F37-4306-4669-861D-BF4D34834BA0}",
+    "Name": "Tunneller:192.168.56.101:Matrikon.OPC.Simulation.1",
+    "ProgID": "Tunneller:192.168.56.101:Matrikon.OPC.Simulation.1"
+  }
+]
+```
+
+Sometimes, as in this example, a server appears in both the 32-bit and 64-bit server lists but works only with the 32-bit connector.
+
+for that example the right communicationAddress is
+
+```
+opcda:///Tunneller:192.168.56.101:Matrikon.OPC.Simulation.1
+```
+
+CLSID can change with updates.
+the correct connector to use is `opcda32_connector`
+
+### Quick-start example (username/password auth)
+
+Use this minimal, clean JSON as a starting point. This example uses **username/password** (simple) authentication and subscribes to **all** nodes by leaving `ignorePaths` empty.
+
+```json
+{
+  "deviceModel": "opcda-connector",
+  "logSettings": {
+    "logFilePath": "./opcda32_connector.log",
+    "logFileMaxMBSize": 10,
+    "logFileMaxFiles": 10,
+    "logLevel": "info"
+  },
+  "timeout": 5,
+  "browseTimeout": 60,
+  "nodesPerRead": 1000,
+  "nodesPerSubscribe": 2000,
+  "ignorePaths": [],
+  "metaData": {
+    "subscriptionUpdatePeriod": 5,
+    "integrityScanPeriod": 3600
+  }
+}
+```
+
+### Alternative example (addNodeIDs)
+
+This example shows how to **skip browsing** and directly subscribe to specific node IDs while enabling certificate-based security options.
+
+```json
+{
+  "deviceModel": "opcda-connector",
+  "logSettings": {
+    "logFilePath": "./opcda_connector.log",
+    "logFileMaxMBSize": 10,
+    "logFileMaxFiles": 10,
+    "logLevel": "info"
+  },
+  "timeout": 5,
+  "skipBrowse": true,
+  "addNodeIDs": [
+    "Tags.device.ALM1.V",
+	"Tags.device2.ALM1.V"
+  ],
+  "metaData": {
+    "subscriptionUpdatePeriod": 1,
+    "integrityScanPeriod": 3600
+  }
+}
+```
+
+> **Note:** `addNodeIDs` and ignorePaths support wildcards (`*`, `?`). See **Appendix — Wildcard matching** below.
+
+### Configuration parameters
+
+#### deviceModel
+- **deviceModel**: Defines the OPC DA configuration profile (the JSON with node/tag definitions, auth, security, browse/subscribe options) for this server.
+- Because each OPC DA server typically has a unique tag tree and naming scheme, you usually create a dedicated deviceModel per server.
+- Naming convention: Brand_SiteName. Examples: Ignition_SiteA, Kepware_PlantWest, SiemensPLC_Line3.
+- Reuse deviceModel only if the OPC DA server’s node structure, security, and metadata behavior match the original profile. Otherwise, create a new profile (e.g., Ignition_SiteB).
+
+#### Logging (`logSettings`)
+- **logFilePath**: Path to the log file. Supports `%` placeholder to include the `deviceID` (e.g., `./connector_%.log`).
+- **logFileMaxMBSize**: Maximum log file size in MB before rotation. *Default: 10*.
+- **logFileMaxFiles**: Number of rotated files to retain. *Default: 10*.
+- **logLevel**: Log verbosity. Options include `debug`, `info`, `error`. *Default: info*.
+- If `logSettings` is not provided, defaults are used.
+
+#### nodes configuration
+- **nodesPerRead**: Max nodes per read request (used by integrity scan). *Default: 1000; Range: 1–10000*.
+- **nodesPerSubscribe**: Max nodes per subscription batch. *Default: 20000; Range: 1–50000*.
+
+#### Node selection
+- **ignorePaths** *(array of strings)*: Nodes to **exclude**. Use this to subscribe to **all except** some nodes. Mutually exclusive with `addNodeIDs`.  
+  - Use `[]` to subscribe to **all** nodes.
+- **addNodeIDs** *(array of strings)*: Nodes to **include** explicitly. Mutually exclusive with `ignorePaths`.  
+- **skipBrowse** *(bool)*: When `true`, the connector will **not** browse and requires `addNodeIDs`. *Default: false*.
+
+#### Metadata
+- **subscriptionUpdatePeriod** *(seconds)*: How often values are published from the server to the connector.  
+- **integrityScanPeriod** *(seconds)*: Full scan period that pushes **all** values for subscribed nodes. *Minimum: 60*. 
+  - Note 1: There is a 2‑second spacing between integrity scan read requests, which means the integrity scan duration depends on nodesPerRead and the total number of nodes. 
+  - Note 2: The integrity scan does not start immediately on connector launch; it waits for a random interval to avoid simultaneous scans across multiple agents.
+
+#### Troubleshooting
+
+- **`BadCertificateInvalid` / `BadSecurityChecksFailed`**  
+  Provide a valid certificate in `encryptionSettings` and register it with the server, or disable verification for testing.
+
+- **`BadUserAccessDenied` / `BadIdentityTokenInvalid`**  
+  Ensure the selected authentication method is allowed by the server’s endpoint and that credentials and certificates match the server policy.
+
+---
+
+## 3. Message format sent to Nexalis Cloud
+
+```json
+{
+  "siteName": "site", #refers to the site where the data tag is coming from, to be set by users
+  "deviceID": "100", #unique ID to distinguish similar devices within the fleet of devices, to be set by users
+  "deviceModel": “opda_model”, #defines the specific triggers and other configurations for each tag. 
+  "protocol": "OPC DA", #refers to the communication protocol used by the device
+  "dataPoint": “ns=1;s=[site]device/data_tag”, # data point where the value is read (e.g. OPC DA node)
+  "description": "" # connector does'nt set description
+  "unit": null, # unit isn't set
+  "value": 100, #instantaneous value read at the data point
+  "tsSource": 1720650038949, #timestamp of the value generated by the data source
+  "qualitySource": "Bad",
+  "tsConnector": 1727925815997, #unix timestamp in ms of when the Nexalis recorded the value
+  "triggerType": "changed", #Trigger used to send data to the cloud. always changed for opcda
+  "metaData": { #communication protocol specific parameters used to read the dataPoint value
+    "integrityScanPeriod": 3600,
+    "nx-agent-id": "fb9cf8e6-xxxx-xxxx-xxxx-be2aea9631d8",
+    "subscriptionUpdatePeriod": 1,
+    "type": "Int32"
+  }
+}
+```
+
+---
+
+## 4. Running the Connector
+
+you should not run OPCDA connector manually.
+
+---
+
+## 6. OPC DA Node Wildcard Matching
+
+### Supported Wildcards
+
+- `?` — matches **exactly one** character  
+- `*` — matches **zero or more** characters
+
+### Implementation Notes
+
+- The matcher first checks for wildcards with `find_first_of("*?")` to decide between **exact** vs **pattern** logic.  
+- With wildcards present, `wildcardMatch` performs a character‑by‑character comparison with **backtracking** for `*`.  
+- Matching is **case‑sensitive**.  
+- **Empty** patterns only match **empty** strings.  
+- Performance is optimized by skipping the wildcard engine when no wildcards are found.
+
+### Best Practices
+
+- Prefer **exact** matches whenever possible for better performance.  
+- Use `?` to match **one** character at a precise position.  
+- Use `*` for **variable‑length** segments.  
+- Avoid leading `*` unless you truly need a global match—it can be overly broad.  
+- Be specific to prevent unintended matches.
+
+#### Pattern Matching Rules & Examples
+
+##### Exact Matching
+When no `*` or `?` is present, a plain string comparison is used.
+
+**Examples**
+
+- **Pattern:** `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **String:**  `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **MATCH** (exact)
+
+- **Pattern:** `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **String:**  `ns=2;s=[WGS02]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **NO MATCH** (different device number)
+
+##### Single Character Wildcard (`?`)
+`?` matches **exactly one** character at its position.
+
+**Examples**
+
+- **Pattern:** `ns=2;s=[WGS0?]/MET11A02/GHI_TILT_ANGLE`  
+  **String:**  `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **MATCH** (`?` → `1`)
+
+- **Pattern:** `ns=2;s=[WGS0?]/MET11A02/GHI_TILT_ANGLE`  
+  **String:**  `ns=2;s=[WGS10]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **NO MATCH** (`?` expects one char after `0`, found `10`)
+
+##### Multiple Character Wildcard (`*`)
+`*` matches **zero or more** characters.
+
+**Examples**
+
+- **Pattern:** `ns=2;s=[WGS*]/MET11A02/GHI_TILT_ANGLE`  
+  **String:**  `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **MATCH** (`*` → `01`)
+
+- **Pattern:** `ns=2;s=[WGS01]/*/GHI_TILT_ANGLE`  
+  **String:**  `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **MATCH** (`*` → `MET11A02`)
+
+##### Complex Patterns
+Combine `*` and `?` as needed.
+
+**Examples**
+
+- **Pattern:** `ns=2;s=[WGS*]/MET*ANGLE`  
+  **String:**  `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **MATCH** (multiple segments)
+
+- **Pattern:** `ns=2;s=*MET11A02*`  
+  **String:**  `ns=2;s=[WGS01]/MET11A02/GHI_TILT_ANGLE`  
+  **Result:**  **MATCH** (content before and after)
+
+### Usage in OPC DA Node Filtering
+
+#### Ignore Paths
+
+Exclude specific nodes from subscription.
+
+```jsonc
+// Configuration example
+"ignorePaths": [
+  "Tags.WGS01.*.IGNORED_SENSOR",  // Ignore all IGNORED_SENSOR nodes from WGS01
+  "Tags.WGS??.TEST/* ns=2;s=[WGS??]/TEST/*",            // Ignore all test nodes from any WGS unit
+  "Tags.WGS01.MET11A02.EXACT"     // Ignore a specific node (exact match)
+]
+```
+
+#### Add Node IDs
+
+Explicitly include nodes for subscription.
+
+```jsonc
+// Configuration example
+"addNodeIDs": [
+  "WGS*.MET11A02.*_ANGLE",   // Subscribe to all angle measurements
+  "WGS01.*.TEMPERATURE",     // Subscribe to all temperature nodes from WGS01
+  "WGS01.MET11A02.SPECIFIC"  // Subscribe to a specific node (exact match)
+]
+```
+
+---
+
+## 7. OPC DA – Common Errors and Solutions (Q&A)
+
+### Can I use multiple OPC DA servers?
+**Yes.** Run multiple connector instances with **separate** config files—one per OPC DA server.
+
+
+### How often do I get values if `subscriptionUpdatePeriod` is 5 seconds?
+The OPC DA server **publishes at most the latest value** observed in each 5‑second window.
+Depending on the implementation, the OPC DA server may send multiple changes before the end of the window.
+### What happens when new nodes are configured on the OPC DA server?
+
+The Connector must be restarted.
+
+
+### What happens when a node is deleted on the OPC DA server?
+
+It will receive no further updates or integrity scan data.
+
+### What if a deleted node is recreated with the same NodeId?
+It is re‑subscribed during the next `integrityScanPeriod` and resumes normal operation.
+
+### What data types are supported?
+Standard OPC DA primitives such as **bool, i1, i2, i4, i8, ui1, ui2, ui4, ui8, r4, r8, bstr, date, currency, decimal, error, variant and array.  
+
+### Error meanings?
+
+- **CoCreateInstanceEx failed** →
+  The agent may be running under the wrong user account, the server may be unavailable, or the wrong connector architecture (opcda32_connector / opcda64_connector) may be in use.
+  To fix a user-account issue, run the installer and specify the appropriate username and password. The connector should run under the same user account as the OPC DA server.
+  “For special service accounts, configure the account in Windows Services (`services.msc`).”
+
+- **server has status: Failed**. we are connected to the server but it's broken or it's remote counterpart is disconnected/offline.
+  this is a server issue. not a connector issue.
